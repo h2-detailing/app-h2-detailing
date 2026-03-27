@@ -127,13 +127,15 @@ function computeDashboard(orders, expenses, settings, period, selectedMonthStr, 
   const yearExpRaw = yearExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const yearExpTotal = yearExpRaw + pausal * mo; // pausal × months elapsed in selected year
 
+  const weekExpenses = expenses.filter(e => e.date >= weekStart && e.date <= weekEnd);
+  const weekExpRaw = weekExpenses.reduce((s, e) => s + Number(e.amount), 0);
+
   // ── Finance ──────────────────────────────────────────────────────
   const periodRevenue = periodOrders.reduce((s, o) => s + Number(o.price), 0);
-  // For weekly view, expenses not split by week – show monthly costs as context
   const displayedExpenses =
     period === 'month' ? monthExpTotal :
     period === 'year' ? yearExpTotal :
-    monthExpRaw;
+    weekExpRaw;
   const periodProfit = periodRevenue - displayedExpenses;
   const margin = periodRevenue > 0 ? Math.round((periodProfit / periodRevenue) * 100) : 0;
   const avgOrderValue = periodOrders.length > 0 ? Math.round(periodRevenue / periodOrders.length) : 0;
@@ -264,6 +266,19 @@ function computeDashboard(orders, expenses, settings, period, selectedMonthStr, 
       })
     : null;
 
+  // ── Service duration stats (all-time, for analytics) ──────────────
+  const durationByCat = {};
+  orders.forEach(o => {
+    if (!o.durationHours || Number(o.durationHours) <= 0) return;
+    const cat = detectCategory(o.description);
+    if (!durationByCat[cat]) durationByCat[cat] = { total: 0, count: 0 };
+    durationByCat[cat].total += Number(o.durationHours);
+    durationByCat[cat].count += 1;
+  });
+  const serviceDurationStats = Object.entries(durationByCat)
+    .map(([cat, { total, count }]) => ({ cat, avg: +(total / count).toFixed(1), count, total: +total.toFixed(1) }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     curMonthStr, weekStart, weekEnd,
     periodOrders, periodRevenue, displayedExpenses,
@@ -279,6 +294,8 @@ function computeDashboard(orders, expenses, settings, period, selectedMonthStr, 
     netProfit, fairShare,
     monthlyBreakdown,
     topClients,
+    weekExpenses,
+    serviceDurationStats,
   };
 }
 
@@ -822,6 +839,185 @@ function OrderCalendar({ orders }) {
   );
 }
 
+// ─── Week Calendar (Apple Calendar style) ────────────────────────────────────
+
+const DAY_NAMES_SHORT = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
+
+function WeekCalendar({ orders, weekStart, weekEnd }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const days = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart + 'T12:00:00');
+      d.setDate(d.getDate() + i);
+      return d.toISOString().slice(0, 10);
+    });
+  }, [weekStart]);
+
+  const ordersByDate = useMemo(() => {
+    const map = {};
+    orders.forEach(o => {
+      const key = o.date.slice(0, 10);
+      if (key >= weekStart && key <= weekEnd) {
+        if (!map[key]) map[key] = [];
+        map[key].push(o);
+      }
+    });
+    return map;
+  }, [orders, weekStart, weekEnd]);
+
+  const totalWeekOrders = days.reduce((s, d) => s + (ordersByDate[d]?.length || 0), 0);
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      {/* Day headers */}
+      <div className="grid grid-cols-7 border-b border-slate-800">
+        {days.map((dateStr, i) => {
+          const isToday = dateStr === todayStr;
+          const dayNum = new Date(dateStr + 'T12:00:00').getDate();
+          const isWeekend = i >= 5;
+          return (
+            <div
+              key={dateStr}
+              className={`py-3 flex flex-col items-center gap-1 border-r border-slate-800/40 last:border-r-0 ${isWeekend ? 'bg-slate-800/20' : ''}`}
+            >
+              <span className={`text-[10px] font-medium uppercase tracking-wide ${isWeekend ? 'text-slate-600' : 'text-slate-500'}`}>
+                {DAY_NAMES_SHORT[i]}
+              </span>
+              <span
+                className={`w-7 h-7 flex items-center justify-center text-sm font-semibold rounded-full ${
+                  isToday
+                    ? 'bg-orange-500 text-white'
+                    : isWeekend
+                      ? 'text-slate-500'
+                      : 'text-slate-200'
+                }`}
+              >
+                {dayNum}
+              </span>
+              {(ordersByDate[dateStr]?.length || 0) > 0 && (
+                <span className="text-[9px] text-orange-400 font-medium">
+                  {ordersByDate[dateStr].length} zak.
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Day columns */}
+      <div className="grid grid-cols-7 divide-x divide-slate-800/40 min-h-[220px]">
+        {days.map((dateStr, i) => {
+          const dayOrders = ordersByDate[dateStr] || [];
+          const isToday = dateStr === todayStr;
+          const isWeekend = i >= 5;
+          return (
+            <div
+              key={dateStr}
+              className={`p-1.5 space-y-1.5 ${isWeekend ? 'bg-slate-800/10' : ''} ${isToday ? 'bg-orange-500/[0.03]' : ''}`}
+            >
+              {dayOrders.length === 0 ? (
+                <div className="flex items-center justify-center min-h-[160px]">
+                  <span className="text-[10px] text-slate-800">—</span>
+                </div>
+              ) : dayOrders.map(o => {
+                const colors = orderTypeColor(o.description);
+                return (
+                  <div key={o.id} className={`${colors.pill} rounded-lg p-1.5 w-full`}>
+                    <div className="text-[10px] font-semibold leading-snug line-clamp-2">{o.description || 'Zakázka'}</div>
+                    <div className="text-[10px] font-bold text-orange-400 mt-1">{formatCzk(Number(o.price))}</div>
+                    {o.workers?.length > 0 && (
+                      <div className="text-[9px] opacity-60 mt-0.5">{o.workers.join(', ')}</div>
+                    )}
+                    {Number(o.durationHours) > 0 && (
+                      <div className="text-[9px] opacity-50">{o.durationHours} h</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {totalWeekOrders === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-sm text-slate-700">Žádné zakázky tento týden</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Service Duration Widget ──────────────────────────────────────────────────
+
+function ServiceDurationWidget({ serviceDurationStats }) {
+  const [open, setOpen] = useState(false);
+
+  const hasData = serviceDurationStats.length > 0;
+  const ordersWithDuration = serviceDurationStats.reduce((s, x) => s + x.count, 0);
+  const maxAvg = Math.max(...serviceDurationStats.map(x => x.avg), 1);
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span className="text-xs font-semibold text-slate-400">Doba trvání služeb</span>
+          {hasData && (
+            <span className="text-[10px] text-slate-600 font-normal">
+              · {ordersWithDuration} {ordersWithDuration === 1 ? 'zakázka' : ordersWithDuration < 5 ? 'zakázky' : 'zakázek'} se zadanou dobou
+            </span>
+          )}
+        </div>
+        <svg
+          className={`w-3.5 h-3.5 text-slate-600 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-800 px-4 py-3">
+          {!hasData ? (
+            <p className="text-xs text-slate-600 py-2 text-center">
+              Zatím žádná data — zadejte dobu trvání u zakázek
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {serviceDurationStats.map(({ cat, avg, count, total }) => (
+                <div key={cat}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-slate-400 font-medium">{cat}</span>
+                    <div className="flex items-center gap-3 text-right">
+                      <span className="text-slate-600">{count}× · Σ {total} h</span>
+                      <span className="text-orange-400 font-semibold tabular-nums">Ø {avg} h</span>
+                    </div>
+                  </div>
+                  <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-orange-500/50 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.round((avg / maxAvg) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              <p className="text-[10px] text-slate-700 pt-1">
+                Data ze všech zakázek se zadanou dobou trvání
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Yearly sub-components ───────────────────────────────────────────────────
 
 function MonthlyRevenueChart({ monthlyBreakdown, selectedYear }) {
@@ -1260,10 +1456,16 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           )}
 
           {/* Kalendář zakázek (month + week only) */}
-          {period !== 'year' && (
+          {period === 'month' && (
             <section>
               <SectionLabel>Kalendář zakázek</SectionLabel>
               <OrderCalendar orders={orders} />
+            </section>
+          )}
+          {period === 'week' && (
+            <section>
+              <SectionLabel>Týdenní přehled</SectionLabel>
+              <WeekCalendar orders={orders} weekStart={d.weekStart} weekEnd={d.weekEnd} />
             </section>
           )}
 
@@ -1283,7 +1485,12 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           {period !== 'year' && (
             <section>
               <SectionLabel>Vyrovnání partnerů</SectionLabel>
-              <CompactSettlement orders={orders} expenses={expenses} settings={settings} selectedMonth={period === 'month' ? selectedMonth : ''} />
+              <CompactSettlement
+                orders={period === 'week' ? d.periodOrders : orders}
+                expenses={period === 'week' ? d.weekExpenses : expenses}
+                settings={settings}
+                selectedMonth={period === 'month' ? selectedMonth : ''}
+              />
             </section>
           )}
 
@@ -1318,6 +1525,12 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
               <TopClients topClients={d.topClients} />
             </section>
           )}
+
+          {/* Doba trvání služeb */}
+          <section>
+            <SectionLabel>Analytika časové náročnosti</SectionLabel>
+            <ServiceDurationWidget serviceDurationStats={d.serviceDurationStats} />
+          </section>
 
           {/* Nejpopulárnější služby */}
           {d.serviceBreakdown.length > 0 && (
