@@ -764,7 +764,7 @@ function OrderCalendar({ orders }) {
                         className={`w-full text-left ${orderTypeColor(o.description).pill} text-[10px] leading-tight px-1.5 py-[2px] rounded truncate font-medium hover:brightness-125 transition-all`}
                         title={o.description}
                       >
-                        {o.description || 'Zakázka'}
+                        {detectCategory(o.description)}
                       </button>
                     ))}
                     {overflow > 0 && (
