@@ -66,7 +66,13 @@ export default function App() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [customPrices, setCustomPrices] = useState({});
   const [view, setView] = useState('dashboard');
+  const [settingsKey, setSettingsKey] = useState(0);
   const [editingOrder, setEditingOrder] = useState(null);
+
+  const navigate = useCallback((id) => {
+    if (id === 'settings') setSettingsKey((k) => k + 1);
+    setView(id);
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -238,6 +244,7 @@ export default function App() {
     ),
     settings: (
       <Settings
+        key={settingsKey}
         settings={settings}
         user={user}
         customPrices={customPrices}
@@ -262,9 +269,9 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
-      <Sidebar currentView={view} onNavigate={setView} user={user} onLogout={handleLogout} />
+      <Sidebar currentView={view} onNavigate={navigate} user={user} onLogout={handleLogout} />
       <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">{views[view] ?? views.dashboard}</main>
-      <MobileBottomNav currentView={view} onNavigate={setView} />
+      <MobileBottomNav currentView={view} onNavigate={navigate} />
     </div>
   );
 }
