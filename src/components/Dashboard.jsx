@@ -1154,7 +1154,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-1.5 items-end lg:flex-row lg:items-center lg:gap-2">
             <button
               onClick={() => onNavigate('add-order')}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"

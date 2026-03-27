@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, PlusCircle, MinusCircle, Users, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, MinusCircle, Users, Users2, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import AddOrder from './components/AddOrder';
@@ -16,6 +16,7 @@ const BOTTOM_NAV = [
   { id: 'add-order',   label: 'Zakázka',   icon: PlusCircle },
   { id: 'add-expense', label: 'Náklad',    icon: MinusCircle },
   { id: 'clients',     label: 'Klienti',   icon: Users },
+  { id: 'partners',    label: 'Partneři',  icon: Users2 },
   { id: 'history',     label: 'Transakce', icon: HistoryIcon },
   { id: 'settings',    label: 'Nastavení', icon: SettingsIcon },
 ];
@@ -25,15 +26,12 @@ function MobileBottomNav({ currentView, onNavigate }) {
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 flex safe-area-inset-bottom">
       {BOTTOM_NAV.map(({ id, label, icon: Icon }) => {
         const active = currentView === id;
-        const isPrimary = id === 'add-order';
         return (
           <button
             key={id}
             onClick={() => onNavigate(id)}
             className={`flex-1 flex flex-col items-center justify-center pt-2 pb-3 gap-0.5 transition-colors ${
-              isPrimary
-                ? active ? 'text-orange-300' : 'text-orange-400'
-                : active ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'
+              active ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'
             }`}
           >
             <Icon className="w-5 h-5" />
