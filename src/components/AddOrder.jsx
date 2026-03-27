@@ -26,11 +26,8 @@ function Stepper({ value, onChange, onRemove }) {
 function ServicePicker({ onApply, customPrices = {} }) {
   const p = (id, def) => customPrices[id] ?? def;
 
-  // Which sections are enabled (only enabled sections count toward total)
-  const [enabled, setEnabled] = useState({ interior: true, exterior: false, upholstery: false });
-
   // Interior
-  const [selectedPackage, setSelectedPackage] = useState('int-base');
+  const [selectedPackage, setSelectedPackage] = useState('');
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [selectedVehicleAddons, setSelectedVehicleAddons] = useState([]);
   const [extras, setExtras] = useState({});
@@ -45,14 +42,6 @@ function ServicePicker({ onApply, customPrices = {} }) {
   // Upholstery
   const [upholstery, setUpholstery] = useState({});
   const [upholsteryTab, setUpholsteryTab] = useState('fabric');
-
-  const toggleEnabled = (key) => {
-    setEnabled((s) => {
-      const nowEnabled = !s[key];
-      if (key === 'exterior' && nowEnabled && selectedExtPackage === '') setSelectedExtPackage('ext-wash');
-      return { ...s, [key]: nowEnabled };
-    });
-  };
 
   const toggleAddon        = (id) => setSelectedAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleVehicleAddon = (id) => setSelectedVehicleAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -70,70 +59,48 @@ function ServicePicker({ onApply, customPrices = {} }) {
     let intTotal = 0, extTotal = 0, uphTotal = 0;
     const parts = [];
 
-    if (enabled.interior) {
-      if (selectedPackage) {
-        const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
-        if (pkg) {
-          intTotal += p(pkg.id, pkg.price);
-          let pkgDesc = pkg.name;
-          const nonVehAddons = selectedAddons.map((aid) => (pkg.addons ?? []).find((a) => a.id === aid && a.group !== 'vehicle')).filter(Boolean);
-          nonVehAddons.forEach((a) => { intTotal += p(a.id, a.price); });
-          const vehAddonObjs = selectedVehicleAddons.map((vid) => intVehicleAddons.find((a) => a.id === vid)).filter(Boolean);
-          vehAddonObjs.forEach((a) => { intTotal += p(a.id, a.price); });
-          const allDescs = [...nonVehAddons, ...vehAddonObjs];
-          if (allDescs.length) pkgDesc += ' + ' + allDescs.map((a) => a.name).join(', ');
-          parts.push(pkgDesc);
-        }
+    if (selectedPackage) {
+      const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
+      if (pkg) {
+        intTotal += p(pkg.id, pkg.price);
+        let pkgDesc = pkg.name;
+        const nonVehAddons = selectedAddons.map((aid) => (pkg.addons ?? []).find((a) => a.id === aid && a.group !== 'vehicle')).filter(Boolean);
+        nonVehAddons.forEach((a) => { intTotal += p(a.id, a.price); });
+        const vehAddonObjs = selectedVehicleAddons.map((vid) => intVehicleAddons.find((a) => a.id === vid)).filter(Boolean);
+        vehAddonObjs.forEach((a) => { intTotal += p(a.id, a.price); });
+        const allDescs = [...nonVehAddons, ...vehAddonObjs];
+        if (allDescs.length) pkgDesc += ' + ' + allDescs.map((a) => a.name).join(', ');
+        parts.push(pkgDesc);
       }
-      SERVICES.interior.extras.forEach((ex) => {
-        if (extras[ex.id]) { intTotal += p(ex.id, ex.price) * extras[ex.id]; parts.push(ex.unit ? `${ex.name} (${extras[ex.id]} ks)` : ex.name); }
-      });
     }
+    SERVICES.interior.extras.forEach((ex) => {
+      if (extras[ex.id]) { intTotal += p(ex.id, ex.price) * extras[ex.id]; parts.push(ex.unit ? `${ex.name} (${extras[ex.id]} ks)` : ex.name); }
+    });
 
-    if (enabled.exterior) {
-      if (selectedExtPackage) {
-        const pkg = SERVICES.exterior.packages.find((pk) => pk.id === selectedExtPackage);
-        if (pkg) {
-          extTotal += p(pkg.id, pkg.price);
-          let pkgDesc = pkg.name;
-          const addonObjs = selectedExtAddons.map((aid) => pkg.addons?.find((a) => a.id === aid)).filter(Boolean);
-          addonObjs.forEach((a) => { extTotal += p(a.id, a.price); });
-          if (addonObjs.length) pkgDesc += ' + ' + addonObjs.map((a) => a.name).join(', ');
-          parts.push(pkgDesc);
-        }
+    if (selectedExtPackage) {
+      const pkg = SERVICES.exterior.packages.find((pk) => pk.id === selectedExtPackage);
+      if (pkg) {
+        extTotal += p(pkg.id, pkg.price);
+        let pkgDesc = pkg.name;
+        const addonObjs = selectedExtAddons.map((aid) => pkg.addons?.find((a) => a.id === aid)).filter(Boolean);
+        addonObjs.forEach((a) => { extTotal += p(a.id, a.price); });
+        if (addonObjs.length) pkgDesc += ' + ' + addonObjs.map((a) => a.name).join(', ');
+        parts.push(pkgDesc);
       }
-      SERVICES.exterior.extras.forEach((ex) => {
-        if (extExtras[ex.id]) { extTotal += p(ex.id, ex.price); parts.push(ex.name); }
-      });
     }
+    SERVICES.exterior.extras.forEach((ex) => {
+      if (extExtras[ex.id]) { extTotal += p(ex.id, ex.price); parts.push(ex.name); }
+    });
 
-    if (enabled.upholstery) {
-      [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
-        if (upholstery[item.id]) { uphTotal += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
-      });
-    }
+    [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
+      if (upholstery[item.id]) { uphTotal += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
+    });
 
-    return { total: intTotal + extTotal + uphTotal, serviceText: parts.join(', '), sectionTotals: { interior: intTotal, exterior: extTotal, upholstery: uphTotal } };
+    return { total: intTotal + extTotal + uphTotal, serviceText: parts.join(', ') };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
+  }, [selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
 
   const subCls = (id, active) => `px-3 py-1 rounded text-xs font-medium transition-all ${active === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`;
-
-  const PanelHeader = ({ sKey, label }) => (
-    <button
-      type="button"
-      onClick={() => toggleEnabled(sKey)}
-      className="w-full flex items-center gap-2.5 p-3"
-    >
-      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${enabled[sKey] ? 'bg-orange-500 border-orange-500' : 'border-slate-600 bg-slate-800/60'}`}>
-        {enabled[sKey] && <Check className="w-2.5 h-2.5 text-white" />}
-      </div>
-      <span className={`text-sm font-semibold transition-colors ${enabled[sKey] ? 'text-white' : 'text-slate-500'}`}>{label}</span>
-      {enabled[sKey] && sectionTotals[sKey] > 0 && (
-        <span className="ml-auto text-xs text-orange-400 font-semibold tabular-nums">{formatCzk(sectionTotals[sKey])}</span>
-      )}
-    </button>
-  );
 
   return (
     <div className="space-y-3">
@@ -141,10 +108,11 @@ function ServicePicker({ onApply, customPrices = {} }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
         {/* ── INTERIÉR ── */}
-        <div className={`rounded-xl border transition-all ${enabled.interior ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`}>
-          <PanelHeader sKey="interior" label="Interiér" />
-          {enabled.interior && (
-            <div className="px-3 pb-3 border-t border-slate-700/30 pt-3 space-y-4">
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800/30">
+          <div className="px-3 py-2.5 border-b border-slate-700/30">
+            <span className="text-sm font-semibold text-white">Interiér</span>
+          </div>
+          <div className="px-3 pb-3 pt-3 space-y-4">
               <div>
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -231,14 +199,15 @@ function ServicePicker({ onApply, customPrices = {} }) {
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* ── EXTERIÉR ── */}
-        <div className={`rounded-xl border transition-all ${enabled.exterior ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`}>
-          <PanelHeader sKey="exterior" label="Exteriér" />
-          {enabled.exterior && (
-            <div className="px-3 pb-3 border-t border-slate-700/30 pt-3 space-y-4">
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800/30">
+          <div className="px-3 py-2.5 border-b border-slate-700/30">
+            <span className="text-sm font-semibold text-white">Exteriér</span>
+          </div>
+          <div className="px-3 pb-3 pt-3 space-y-4">
               <div>
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
                 <div className="space-y-1.5">
@@ -300,33 +269,32 @@ function ServicePicker({ onApply, customPrices = {} }) {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* ── ČALOUNĚNÍ ── */}
-        <div className={`rounded-xl border transition-all ${enabled.upholstery ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`}>
-          <PanelHeader sKey="upholstery" label="Čalounění" />
-          {enabled.upholstery && (
-            <div className="px-3 pb-3 border-t border-slate-700/30 pt-3 space-y-3">
-              <div className="flex gap-1">
-                <button type="button" className={subCls('fabric', upholsteryTab)} onClick={() => setUpholsteryTab('fabric')}>Látka</button>
-                <button type="button" className={subCls('leather', upholsteryTab)} onClick={() => setUpholsteryTab('leather')}>Kůže</button>
-              </div>
-              <div className="space-y-1.5">
-                {(upholsteryTab === 'fabric' ? SERVICES.upholstery.fabric : SERVICES.upholstery.leather).map((item) => (
-                  <div key={item.id} className="flex items-center gap-2">
-                    <input type="checkbox" checked={!!upholstery[item.id]} onChange={() => toggleUph(item.id)} className="accent-orange-500" />
-                    <span className="flex-1 text-xs text-slate-300">{item.name}</span>
-                    {upholstery[item.id] && <Stepper value={upholstery[item.id]} onChange={(q) => updateQty(setUpholstery, item.id, q)} onRemove={() => toggleUph(item.id)} />}
-                    <span className="text-xs text-slate-500 text-right w-16">
-                      {upholstery[item.id] ? formatCzk(p(item.id, item.price) * upholstery[item.id]) : formatCzk(p(item.id, item.price))}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800/30">
+          <div className="px-3 py-2.5 border-b border-slate-700/30">
+            <span className="text-sm font-semibold text-white">Čalounění</span>
+          </div>
+          <div className="px-3 pb-3 pt-3 space-y-3">
+            <div className="flex gap-1">
+              <button type="button" className={subCls('fabric', upholsteryTab)} onClick={() => setUpholsteryTab('fabric')}>Látka</button>
+              <button type="button" className={subCls('leather', upholsteryTab)} onClick={() => setUpholsteryTab('leather')}>Kůže</button>
             </div>
-          )}
+            <div className="space-y-1.5">
+              {(upholsteryTab === 'fabric' ? SERVICES.upholstery.fabric : SERVICES.upholstery.leather).map((item) => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!upholstery[item.id]} onChange={() => toggleUph(item.id)} className="accent-orange-500" />
+                  <span className="flex-1 text-xs text-slate-300">{item.name}</span>
+                  {upholstery[item.id] && <Stepper value={upholstery[item.id]} onChange={(q) => updateQty(setUpholstery, item.id, q)} onRemove={() => toggleUph(item.id)} />}
+                  <span className="text-xs text-slate-500 text-right w-16">
+                    {upholstery[item.id] ? formatCzk(p(item.id, item.price) * upholstery[item.id]) : formatCzk(p(item.id, item.price))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
       </div>
@@ -659,15 +627,6 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* ── Service Picker — full width ── */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-5">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sestavit ze služeb</div>
-          <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
-            setForm((f) => ({ ...f, price: String(total) }));
-            setServiceText(desc);
-          }} />
-        </div>
-
         {/* ── Direct grid — cards are grid children so each row auto-aligns heights ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
@@ -708,16 +667,16 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
 
           {/* ROW 1 right ── Cena */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <Label>Cena pro zákazníka (Kč)</Label>
-            {serviceText && (
-              <p className="text-xs text-slate-500 -mt-1 truncate">{serviceText}</p>
-            )}
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cena zakázky (Kč)</div>
             <input
               type="number" value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
-              placeholder="0" min="0" step="1"
-              className={inputCls + ' text-xl font-semibold'}
+              placeholder="Sestav službu nebo uprav cenu" min="0" step="1"
+              className={inputCls}
             />
+            {serviceText && (
+              <p className="text-xs text-slate-500 truncate">{serviceText}</p>
+            )}
 
             {/* Sleva */}
             {price > 0 && (
@@ -839,6 +798,18 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
 
           </div>
 
+        </div>
+
+        {/* ── Service Picker — full width ── */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 my-5">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sestavit ze služeb</div>
+          <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
+            setForm((f) => ({ ...f, price: String(total) }));
+            setServiceText(desc);
+          }} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* ROW 2 left ── Datum + Kdo pracoval */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
             <div>

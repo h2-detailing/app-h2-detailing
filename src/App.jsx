@@ -13,8 +13,6 @@ import { api } from './api/index';
 
 const BOTTOM_NAV = [
   { id: 'dashboard',   label: 'Přehled',   icon: LayoutDashboard },
-  { id: 'add-order',   label: 'Zakázka',   icon: PlusCircle },
-  { id: 'add-expense', label: 'Náklad',    icon: MinusCircle },
   { id: 'clients',     label: 'Klienti',   icon: Users },
   { id: 'partners',    label: 'Partneři',  icon: Users2 },
   { id: 'history',     label: 'Transakce', icon: HistoryIcon },
