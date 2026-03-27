@@ -70,4 +70,8 @@ export const api = {
   // Settings
   getSettings: () => req('GET', '/settings'),
   updateSettings: (data) => req('PUT', '/settings', data),
+
+  // Prices
+  getPrices: () => req('GET', '/prices'),
+  updatePrices: (data) => req('PUT', '/prices', data),
 };

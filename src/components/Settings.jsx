@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RotateCcw, KeyRound } from 'lucide-react';
+import { Save, RotateCcw, KeyRound, Tag } from 'lucide-react';
 import { api } from '../api/index';
+import { getAllPriceItems } from '../data/services';
 
-export default function Settings({ settings, onSave, user }) {
+export default function Settings({ settings, onSave, onSavePrices, customPrices = {}, user }) {
   const [form, setForm] = useState(settings);
   const [saved, setSaved] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwMsg, setPwMsg] = useState({ text: '', ok: false });
 
-  useEffect(() => {
-    setForm(settings);
-  }, [settings]);
+  const buildPriceForm = (overrides) => {
+    const map = {};
+    for (const group of getAllPriceItems()) {
+      for (const item of group.items) {
+        map[item.id] = overrides[item.id] ?? item.defaultPrice;
+      }
+    }
+    return map;
+  };
+  const [priceForm, setPriceForm] = useState(() => buildPriceForm(customPrices));
+  const [priceSaved, setPriceSaved] = useState(false);
+
+  useEffect(() => { setForm(settings); }, [settings]);
+  useEffect(() => { setPriceForm(buildPriceForm(customPrices)); }, [customPrices]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePwSubmit = async (e) => {
     e.preventDefault();
@@ -40,6 +52,17 @@ export default function Settings({ settings, onSave, user }) {
     const defaults = { partner1: 'Patrik', partner2: 'Jirka', pausal: 1500, split: 50 };
     setForm(defaults);
     onSave(defaults);
+  };
+
+  const handlePriceSubmit = async (e) => {
+    e.preventDefault();
+    const prices = {};
+    for (const [id, val] of Object.entries(priceForm)) {
+      prices[id] = parseInt(val) || 0;
+    }
+    await onSavePrices(prices);
+    setPriceSaved(true);
+    setTimeout(() => setPriceSaved(false), 2000);
   };
 
   return (
@@ -142,6 +165,48 @@ export default function Settings({ settings, onSave, user }) {
             Reset
           </button>
         </div>
+      </form>
+
+      {/* Price editor */}
+      <form onSubmit={handlePriceSubmit} className="mt-4 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-5">
+        <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <Tag className="w-4 h-4 text-slate-500" />
+          Upravit ceník
+        </h3>
+        {getAllPriceItems().map((group) => (
+          <div key={group.group}>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{group.group}</div>
+            <div className="space-y-2">
+              {group.items.map((item) => (
+                <div key={item.id} className="flex items-center gap-3">
+                  <span className="flex-1 text-sm text-slate-300">{item.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      value={priceForm[item.id] ?? item.defaultPrice}
+                      onChange={(e) => setPriceForm((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                      min="0"
+                      step="10"
+                      className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-orange-500 transition-colors"
+                    />
+                    <span className="text-xs text-slate-500 w-10">{item.unit ? 'Kč/ks' : 'Kč'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <button
+          type="submit"
+          className={`w-full flex items-center justify-center gap-2 py-2.5 font-semibold text-sm rounded-lg transition-all ${
+            priceSaved
+              ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
+              : 'bg-orange-500 hover:bg-orange-400 text-slate-950'
+          }`}
+        >
+          <Save className="w-4 h-4" />
+          {priceSaved ? 'Ceník uložen ✓' : 'Uložit ceník'}
+        </button>
       </form>
 
       {/* Password change */}

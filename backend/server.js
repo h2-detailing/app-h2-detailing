@@ -21,6 +21,7 @@ app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/clients',  require('./routes/clients'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/prices',   require('./routes/prices'));
 
 // Only listen directly when running locally (not on Vercel)
 if (!process.env.VERCEL) {

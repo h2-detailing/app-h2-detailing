@@ -64,22 +64,25 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [clients, setClients] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [customPrices, setCustomPrices] = useState({});
   const [view, setView] = useState('dashboard');
   const [editingOrder, setEditingOrder] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [ordersData, expensesData, clientsData, settingsData] = await Promise.all([
+      const [ordersData, expensesData, clientsData, settingsData, pricesData] = await Promise.all([
         api.getOrders(),
         api.getExpenses(),
         api.getClients(),
         api.getSettings(),
+        api.getPrices(),
       ]);
       setOrders(ordersData);
       setExpenses(expensesData);
       setClients(clientsData);
       setSettings(settingsData);
+      setCustomPrices(pricesData);
     } catch (e) {
       if (e.message !== 'Unauthorized') console.error('Load error:', e);
     } finally {
@@ -132,6 +135,7 @@ export default function App() {
       <AddOrder
         settings={settings}
         clients={clients}
+        customPrices={customPrices}
         onAdd={async (orderData) => {
           await api.createOrder(orderData);
           setOrders(await api.getOrders());
@@ -160,6 +164,7 @@ export default function App() {
       <AddOrder
         settings={settings}
         clients={clients}
+        customPrices={customPrices}
         initialOrder={editingOrder}
         onAdd={async (orderData) => {
           await api.updateOrder(editingOrder.id, orderData);
@@ -235,9 +240,14 @@ export default function App() {
       <Settings
         settings={settings}
         user={user}
+        customPrices={customPrices}
         onSave={async (updated) => {
           const saved = await api.updateSettings(updated);
           setSettings(saved);
+        }}
+        onSavePrices={async (prices) => {
+          const saved = await api.updatePrices(prices);
+          setCustomPrices(saved);
         }}
       />
     ),

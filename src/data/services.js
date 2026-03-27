@@ -71,3 +71,31 @@ export const SERVICES = {
     ],
   },
 };
+
+// Returns a flat grouped list of all priceable items for the Settings price editor
+export function getAllPriceItems() {
+  return [
+    {
+      group: 'Interiér — balíčky',
+      items: SERVICES.interior.packages.map((p) => ({ id: p.id, name: p.name, defaultPrice: p.price })),
+    },
+    {
+      group: 'Interiér — příplatky',
+      items: SERVICES.interior.packages.flatMap((p) =>
+        (p.addons ?? []).map((a) => ({ id: a.id, name: `${p.name}: ${a.name}`, defaultPrice: a.price }))
+      ),
+    },
+    {
+      group: 'Interiér — extra služby',
+      items: SERVICES.interior.extras.map((e) => ({ id: e.id, name: e.name, defaultPrice: e.price, unit: e.unit })),
+    },
+    {
+      group: 'Čalounění — textil',
+      items: SERVICES.upholstery.fabric.map((i) => ({ id: i.id, name: i.name, defaultPrice: i.price })),
+    },
+    {
+      group: 'Čalounění — kůže',
+      items: SERVICES.upholstery.leather.map((i) => ({ id: i.id, name: i.name, defaultPrice: i.price })),
+    },
+  ];
+}

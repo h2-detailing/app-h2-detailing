@@ -23,7 +23,8 @@ function Stepper({ value, onChange, onRemove }) {
 
 // ─── Service Picker ───────────────────────────────────────────────────────────
 
-function ServicePicker({ onApply }) {
+function ServicePicker({ onApply, customPrices = {} }) {
+  const p = (id, def) => customPrices[id] ?? def;
   const [openSections, setOpenSections] = useState({ interior: true, exterior: false, upholstery: false });
   const toggleSection = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
   const [selectedPackage, setSelectedPackage] = useState('');
@@ -42,24 +43,25 @@ function ServicePicker({ onApply }) {
     let t = 0;
     const parts = [];
     if (selectedPackage) {
-      const pkg = SERVICES.interior.packages.find((p) => p.id === selectedPackage);
+      const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
       if (pkg) {
-        t += pkg.price;
+        t += p(pkg.id, pkg.price);
         let pkgDesc = pkg.name;
         const addonNames = selectedAddons.map((aid) => pkg.addons?.find((a) => a.id === aid)).filter(Boolean);
-        addonNames.forEach((a) => { t += a.price; });
+        addonNames.forEach((a) => { t += p(a.id, a.price); });
         if (addonNames.length) pkgDesc += ' + ' + addonNames.map((a) => a.name).join(', ');
         parts.push(pkgDesc);
       }
     }
     SERVICES.interior.extras.forEach((ex) => {
-      if (extras[ex.id]) { t += ex.price * extras[ex.id]; parts.push(ex.unit ? `${ex.name} (${extras[ex.id]} ks)` : ex.name); }
+      if (extras[ex.id]) { t += p(ex.id, ex.price) * extras[ex.id]; parts.push(ex.unit ? `${ex.name} (${extras[ex.id]} ks)` : ex.name); }
     });
     [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
-      if (upholstery[item.id]) { t += item.price * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
+      if (upholstery[item.id]) { t += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
     });
     return { total: t, serviceText: parts.join(', ') };
-  }, [selectedPackage, selectedAddons, extras, upholstery]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPackage, selectedAddons, extras, upholstery, customPrices]);
 
   const hasSelection = !!selectedPackage || Object.keys(extras).length > 0 || Object.keys(upholstery).length > 0;
   const sectionBtnCls = (key) => `px-3 py-1.5 rounded-md text-xs font-medium transition-all ${openSections[key] ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'text-slate-400 hover:text-white border border-transparent'}`;
@@ -87,7 +89,7 @@ function ServicePicker({ onApply }) {
                   <label className="flex items-center gap-2 cursor-pointer px-3 py-2.5">
                     <input type="radio" name="pkg" value={pkg.id} checked={selectedPackage === pkg.id} onChange={() => { setSelectedPackage(pkg.id); setSelectedAddons([]); }} className="accent-orange-500" />
                     <span className="flex-1 text-sm text-white font-medium">{pkg.name}</span>
-                    <span className="text-xs text-orange-400 font-semibold">od {formatCzk(pkg.price)}</span>
+                    <span className="text-xs text-orange-400 font-semibold">od {formatCzk(p(pkg.id, pkg.price))}</span>
                     <button type="button" onClick={(e) => { e.preventDefault(); setExpandedPkg(expandedPkg === pkg.id ? null : pkg.id); }} className="text-slate-500 hover:text-slate-300 ml-1">
                       {expandedPkg === pkg.id ? <ChevronUp className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </button>
@@ -113,7 +115,7 @@ function ServicePicker({ onApply }) {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
                             <span className="text-xs text-slate-300">{addon.name}</span>
-                            <span className="text-xs text-orange-400 ml-auto">+{formatCzk(addon.price)}</span>
+                            <span className="text-xs text-orange-400 ml-auto">+{formatCzk(p(addon.id, addon.price))}</span>
                           </label>
                         </React.Fragment>
                       ))}
@@ -133,10 +135,10 @@ function ServicePicker({ onApply }) {
                   {ex.unit ? (
                     <>
                       {extras[ex.id] && <Stepper value={extras[ex.id]} onChange={(q) => updateQty(setExtras, ex.id, q)} onRemove={() => toggleExtra(ex.id)} />}
-                      <span className="text-xs text-slate-500 w-20 text-right">{extras[ex.id] ? formatCzk(ex.price * extras[ex.id]) : `${ex.price} Kč/ks`}</span>
+                      <span className="text-xs text-slate-500 w-20 text-right">{extras[ex.id] ? formatCzk(p(ex.id, ex.price) * extras[ex.id]) : `${p(ex.id, ex.price)} Kč/ks`}</span>
                     </>
                   ) : (
-                    <span className="text-xs text-slate-500 w-16 text-right">{formatCzk(ex.price)}</span>
+                    <span className="text-xs text-slate-500 w-16 text-right">{formatCzk(p(ex.id, ex.price))}</span>
                   )}
                 </div>
               ))}
@@ -164,7 +166,7 @@ function ServicePicker({ onApply }) {
                 <span className="flex-1 text-sm text-slate-300">{item.name}</span>
                 {upholstery[item.id] && <Stepper value={upholstery[item.id]} onChange={(q) => updateQty(setUpholstery, item.id, q)} onRemove={() => toggleUph(item.id)} />}
                 <span className="text-xs text-slate-500 w-24 text-right">
-                  {upholstery[item.id] ? `od ${formatCzk(item.price * upholstery[item.id])}` : `od ${formatCzk(item.price)}`}
+                  {upholstery[item.id] ? `od ${formatCzk(p(item.id, item.price) * upholstery[item.id])}` : `od ${formatCzk(p(item.id, item.price))}`}
                 </span>
               </div>
             ))}
@@ -387,7 +389,7 @@ function Label({ children, optional }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AddOrder({ settings, clients = [], onAdd, onAddClient, onCancel, initialOrder }) {
+export default function AddOrder({ settings, clients = [], customPrices = {}, onAdd, onAddClient, onCancel, initialOrder }) {
   const { partner1, partner2, split } = settings;
   const isEditing = !!initialOrder;
 
@@ -554,7 +556,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
               </button>
             </div>
             {pickerOpen && (
-              <ServicePicker onApply={(total, desc) => {
+              <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
                 setForm((f) => ({ ...f, price: String(total) }));
                 setServiceText(desc);
                 setPickerOpen(false);
