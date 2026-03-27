@@ -27,12 +27,14 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { name, phone, email, note, isCompany, ico, dic, billingAddress } = req.body;
+  const { name, companyName, displayAs, phone, email, note, isCompany, ico, dic, billingAddress } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
   const id = randomUUID();
   const { error } = await supabase.from('clients').insert({
     id,
     name: name.trim(),
+    companyName: companyName || '',
+    displayAs: displayAs || 'name',
     phone: phone || '',
     email: email || '',
     note: note || '',
@@ -48,13 +50,15 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const { name, phone, email, note, isCompany, ico, dic, billingAddress } = req.body;
+  const { name, companyName, displayAs, phone, email, note, isCompany, ico, dic, billingAddress } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Jméno je povinné' });
   const { data: existing } = await supabase.from('clients').select('id').eq('id', req.params.id).single();
   if (!existing) return res.status(404).json({ error: 'Klient nenalezen' });
 
   const { error } = await supabase.from('clients').update({
     name: name.trim(),
+    companyName: companyName || '',
+    displayAs: displayAs || 'name',
     phone: phone || '',
     email: email || '',
     note: note || '',
@@ -76,7 +80,7 @@ router.delete('/:id', async (req, res) => {
 
 router.post('/:id/vehicles', async (req, res) => {
   const { make, model, year, licensePlate, color, note } = req.body;
-  if (!make?.trim() || !model?.trim()) return res.status(400).json({ error: 'Značka a model jsou povinné' });
+  if (!make?.trim()) return res.status(400).json({ error: 'Značka je povinná' });
   const { data: clientExists } = await supabase.from('clients').select('id').eq('id', req.params.id).single();
   if (!clientExists) return res.status(404).json({ error: 'Klient nenalezen' });
 

@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS clients (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  "companyName" TEXT DEFAULT '',
+  "displayAs" TEXT DEFAULT 'name',
   phone TEXT DEFAULT '',
   email TEXT DEFAULT '',
   note TEXT DEFAULT '',
@@ -24,7 +26,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   id TEXT PRIMARY KEY,
   "clientId" TEXT NOT NULL REFERENCES clients(id),
   make TEXT NOT NULL,
-  model TEXT NOT NULL,
+  model TEXT DEFAULT '',
   year TEXT DEFAULT '',
   "licensePlate" TEXT DEFAULT '',
   color TEXT DEFAULT '',
@@ -74,6 +76,11 @@ CREATE TABLE IF NOT EXISTS order_photos (
   url TEXT DEFAULT '',
   "createdAt" TEXT DEFAULT ''
 );
+
+-- Migration: run these if upgrading an existing database
+-- ALTER TABLE clients ADD COLUMN IF NOT EXISTS "companyName" TEXT DEFAULT '';
+-- ALTER TABLE clients ADD COLUMN IF NOT EXISTS "displayAs" TEXT DEFAULT 'name';
+-- ALTER TABLE vehicles ALTER COLUMN model DROP NOT NULL;
 
 -- Default settings (safe to re-run)
 INSERT INTO settings (key, value) VALUES

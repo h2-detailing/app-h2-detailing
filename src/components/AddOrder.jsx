@@ -217,6 +217,13 @@ function PhotoInput({ label, file, onChange }) {
 
 // ─── Client combobox (typeahead) ─────────────────────────────────────────────
 
+function clientDisplayName(c) {
+  if (c.isCompany && c.displayAs === 'company' && c.companyName?.trim()) {
+    return c.companyName.trim();
+  }
+  return c.name;
+}
+
 function ClientCombobox({ clients, value, onChange, inputCls }) {
   const [query, setQuery] = useState('');
   const [open, setOpen]   = useState(false);
@@ -227,7 +234,10 @@ function ClientCombobox({ clients, value, onChange, inputCls }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return clients;
-    return clients.filter((c) => c.name.toLowerCase().includes(q));
+    return clients.filter((c) =>
+      c.name.toLowerCase().includes(q) ||
+      (c.companyName || '').toLowerCase().includes(q)
+    );
   }, [clients, query]);
 
   // Close dropdown on outside click
@@ -243,7 +253,7 @@ function ClientCombobox({ clients, value, onChange, inputCls }) {
   if (selected) {
     return (
       <div className="flex items-center gap-2 bg-slate-800 border border-orange-500/40 rounded-lg px-3 py-2.5">
-        <span className="flex-1 text-sm text-white font-medium truncate">{selected.name}</span>
+        <span className="flex-1 text-sm text-white font-medium truncate">{clientDisplayName(selected)}</span>
         <button
           type="button"
           onClick={() => select(null)}
@@ -293,7 +303,7 @@ function ClientCombobox({ clients, value, onChange, inputCls }) {
                   onClick={() => select(c)}
                   className="w-full px-3 py-2.5 text-left hover:bg-slate-700/60 transition-colors flex items-center justify-between gap-3"
                 >
-                  <span className="text-sm text-white font-medium truncate">{c.name}</span>
+                  <span className="text-sm text-white font-medium truncate">{clientDisplayName(c)}</span>
                   {c.vehicles.length > 0 && (
                     <span className="text-xs text-slate-500 flex-shrink-0">
                       {c.vehicles.length} {c.vehicles.length === 1 ? 'auto' : c.vehicles.length < 5 ? 'auta' : 'aut'}
@@ -341,13 +351,16 @@ export default function AddOrder({ settings, clients = [], onAdd, onCancel }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountPct, setDiscountPct] = useState('');
+  const [tipEnabled, setTipEnabled] = useState(false);
+  const [tipAmount, setTipAmount] = useState('');
   const [splitOverrideEnabled, setSplitOverrideEnabled] = useState(false);
   const [customSplit, setCustomSplit] = useState(split);
 
   const price = parseFloat(form.price) || 0;
   const discountFraction = discountEnabled ? Math.min(Math.max(parseFloat(discountPct) || 0, 0), 100) / 100 : 0;
   const discountAmount = Math.round(price * discountFraction);
-  const finalPrice = price - discountAmount;
+  const tip = tipEnabled ? Math.max(parseFloat(tipAmount) || 0, 0) : 0;
+  const finalPrice = price - discountAmount + tip;
   const effectiveSplit = splitOverrideEnabled ? customSplit : split;
   const p1 = Math.round(finalPrice * (effectiveSplit / 100));
   const p2 = finalPrice - p1;
@@ -357,7 +370,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onCancel }) {
 
   const autoDescription = useMemo(() => {
     const parts = [];
-    if (selectedClient)  parts.push(selectedClient.name);
+    if (selectedClient)  parts.push(clientDisplayName(selectedClient));
     if (selectedVehicle) {
       const v = selectedVehicle;
       parts.push(`${v.make} ${v.model}${v.year ? ` (${v.year})` : ''}`);
@@ -536,6 +549,59 @@ export default function AddOrder({ settings, clients = [], onAdd, onCancel }) {
                         </div>
                         <div className="text-right">
                           <div className="text-xs text-slate-500">Konečná cena</div>
+                          <div className="text-base font-bold text-white">{formatCzk(finalPrice)}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dýško */}
+            {price > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { setTipEnabled((d) => !d); setTipAmount(''); }}
+                  className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${tipEnabled ? 'text-green-400 hover:text-green-300' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${tipEnabled ? 'border-green-400 bg-green-400/20' : 'border-slate-600'}`}>
+                    {tipEnabled && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
+                  </span>
+                  Dostali dýško
+                </button>
+
+                {tipEnabled && (
+                  <div className="mt-2 bg-slate-800/60 border border-green-500/20 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          value={tipAmount}
+                          onChange={(e) => setTipAmount(e.target.value)}
+                          placeholder="0"
+                          min="0" step="1"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-green-500 transition-colors pr-12"
+                          autoFocus
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium pointer-events-none">Kč</span>
+                      </div>
+                    </div>
+                    {tip > 0 && (
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/50">
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-slate-500">Cena za práci</span>
+                            <span className="text-slate-400">{formatCzk(price - discountAmount)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-slate-500">Dýško</span>
+                            <span className="text-green-400">+ {formatCzk(tip)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-slate-500">Celkem</div>
                           <div className="text-base font-bold text-white">{formatCzk(finalPrice)}</div>
                         </div>
                       </div>

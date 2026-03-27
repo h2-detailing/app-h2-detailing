@@ -7,7 +7,7 @@ router.use(auth);
 
 router.put('/:id', async (req, res) => {
   const { make, model, year, licensePlate, color, note } = req.body;
-  if (!make?.trim() || !model?.trim()) return res.status(400).json({ error: 'Značka a model jsou povinné' });
+  if (!make?.trim()) return res.status(400).json({ error: 'Značka je povinná' });
   const { data: existing } = await supabase.from('vehicles').select('id').eq('id', req.params.id).single();
   if (!existing) return res.status(404).json({ error: 'Vozidlo nenalezeno' });
 

@@ -23,6 +23,20 @@ function initials(name) {
   return (parts[parts.length - 1][0] + parts[0][0]).toUpperCase();
 }
 
+function getDisplayName(client) {
+  if (!!client.isCompany && client.displayAs === 'company' && client.companyName?.trim()) {
+    return client.companyName.trim();
+  }
+  return client.name;
+}
+
+function displayFormatted(client) {
+  if (!!client.isCompany && client.displayAs === 'company' && client.companyName?.trim()) {
+    return client.companyName.trim();
+  }
+  return formatName(client.name);
+}
+
 function clientStats(client, orders) {
   const clientOrders = orders.filter((o) => o.clientId === client.id);
   const totalRevenue = clientOrders.reduce((s, o) => s + Number(o.price), 0);
@@ -35,7 +49,7 @@ function clientStats(client, orders) {
   return { count: clientOrders.length, totalRevenue, lastVisit, firstVisit };
 }
 
-const EMPTY_CLIENT_FORM  = { name: '', phone: '', email: '', note: '', isCompany: false, ico: '', dic: '', billingAddress: '' };
+const EMPTY_CLIENT_FORM  = { name: '', companyName: '', displayAs: 'name', phone: '', email: '', note: '', isCompany: false, ico: '', dic: '', billingAddress: '' };
 const EMPTY_VEHICLE_FORM = { make: '', model: '', year: '', licensePlate: '', color: '', note: '' };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -111,7 +125,7 @@ function ClientDetail({
   );
 
   const startEditClient = () => {
-    setEditClientForm({ name: client.name, phone: client.phone || '', email: client.email || '', note: client.note || '', isCompany: client.isCompany || false, ico: client.ico || '', dic: client.dic || '', billingAddress: client.billingAddress || '' });
+    setEditClientForm({ name: client.name, companyName: client.companyName || '', displayAs: client.displayAs || 'name', phone: client.phone || '', email: client.email || '', note: client.note || '', isCompany: client.isCompany || false, ico: client.ico || '', dic: client.dic || '', billingAddress: client.billingAddress || '' });
     setEditingClient(true);
     setFormError('');
   };
@@ -124,8 +138,8 @@ function ClientDetail({
   };
 
   const handleAddVehicle = () => {
-    if (!vehicleForm.make.trim() || !vehicleForm.model.trim())
-      return setFormError('Značka a model jsou povinné.');
+    if (!vehicleForm.make.trim())
+      return setFormError('Značka je povinná.');
     setFormError('');
     onAddVehicle(client.id, { ...vehicleForm });
     setVehicleForm(EMPTY_VEHICLE_FORM);
@@ -139,8 +153,8 @@ function ClientDetail({
   };
 
   const handleUpdateVehicle = (vehicleId) => {
-    if (!editVehicleForm.make.trim() || !editVehicleForm.model.trim())
-      return setFormError('Značka a model jsou povinné.');
+    if (!editVehicleForm.make.trim())
+      return setFormError('Značka je povinná.');
     setFormError('');
     onUpdateVehicle(client.id, vehicleId, { ...editVehicleForm });
     setEditingVehicleId(null);
@@ -179,11 +193,11 @@ function ClientDetail({
           <div className="flex items-start gap-4">
             {/* Avatar */}
             <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-orange-400 font-bold text-lg">{initials(client.name)}</span>
+              <span className="text-orange-400 font-bold text-lg">{initials(getDisplayName(client))}</span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold text-white">{formatName(client.name)}</h1>
+                <h1 className="text-2xl font-bold text-white">{displayFormatted(client)}</h1>
                 {client.isCompany && (
                   <span className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20">Firma</span>
                 )}
@@ -248,6 +262,22 @@ function ClientDetail({
             </div>
             {editClientForm.isCompany && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-800 pt-3 mb-3">
+                <Field label="Název firmy" value={editClientForm.companyName} onChange={(v) => setEditClientForm({ ...editClientForm, companyName: v })} placeholder="ABC s.r.o." span={2} />
+                {editClientForm.companyName?.trim() && (
+                  <div className="sm:col-span-2">
+                    <div className="text-xs font-medium text-slate-400 mb-2">Zobrazovat primárně jako</div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setEditClientForm({ ...editClientForm, displayAs: 'name' })}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${editClientForm.displayAs === 'name' ? 'bg-orange-500/15 border-orange-500/40 text-orange-300' : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'}`}>
+                        Jméno a příjmení
+                      </button>
+                      <button type="button" onClick={() => setEditClientForm({ ...editClientForm, displayAs: 'company' })}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${editClientForm.displayAs === 'company' ? 'bg-orange-500/15 border-orange-500/40 text-orange-300' : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'}`}>
+                        Název firmy
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <Field label="IČO" value={editClientForm.ico} onChange={(v) => setEditClientForm({ ...editClientForm, ico: v })} placeholder="12345678" />
                 <Field label="DIČ" value={editClientForm.dic} onChange={(v) => setEditClientForm({ ...editClientForm, dic: v })} placeholder="CZ12345678" />
                 <Field label="Fakturační adresa" value={editClientForm.billingAddress} onChange={(v) => setEditClientForm({ ...editClientForm, billingAddress: v })} placeholder="Ulice 1, Praha 1" span={2} />
@@ -297,7 +327,7 @@ function ClientDetail({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
               <Field label="Značka"   value={vehicleForm.make}         onChange={(v) => setVehicleForm({ ...vehicleForm, make: v })}         placeholder="Škoda"    required />
-              <Field label="Model"    value={vehicleForm.model}        onChange={(v) => setVehicleForm({ ...vehicleForm, model: v })}        placeholder="Octavia"  required />
+              <Field label="Model"    value={vehicleForm.model}        onChange={(v) => setVehicleForm({ ...vehicleForm, model: v })}        placeholder="Octavia" />
               <Field label="Rok"      value={vehicleForm.year}         onChange={(v) => setVehicleForm({ ...vehicleForm, year: v })}         placeholder="2022" />
               <Field label="SPZ"      value={vehicleForm.licensePlate} onChange={(v) => setVehicleForm({ ...vehicleForm, licensePlate: v })} placeholder="1AB 2345" />
               <Field label="Barva"    value={vehicleForm.color}        onChange={(v) => setVehicleForm({ ...vehicleForm, color: v })}        placeholder="černá" />
@@ -335,7 +365,7 @@ function ClientDetail({
                     <div className="p-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                         <Field label="Značka"   value={editVehicleForm.make}         onChange={(v2) => setEditVehicleForm({ ...editVehicleForm, make: v2 })}         placeholder="Škoda"    required />
-                        <Field label="Model"    value={editVehicleForm.model}        onChange={(v2) => setEditVehicleForm({ ...editVehicleForm, model: v2 })}        placeholder="Octavia"  required />
+                        <Field label="Model"    value={editVehicleForm.model}        onChange={(v2) => setEditVehicleForm({ ...editVehicleForm, model: v2 })}        placeholder="Octavia" />
                         <Field label="Rok"      value={editVehicleForm.year}         onChange={(v2) => setEditVehicleForm({ ...editVehicleForm, year: v2 })}         placeholder="2022" />
                         <Field label="SPZ"      value={editVehicleForm.licensePlate} onChange={(v2) => setEditVehicleForm({ ...editVehicleForm, licensePlate: v2 })} placeholder="1AB 2345" />
                         <Field label="Barva"    value={editVehicleForm.color}        onChange={(v2) => setEditVehicleForm({ ...editVehicleForm, color: v2 })}        placeholder="černá" />
@@ -519,6 +549,7 @@ export default function Clients({
       .filter((c) => {
         const matchesSearch = !q || (
           c.name.toLowerCase().includes(q) ||
+          (c.companyName || '').toLowerCase().includes(q) ||
           (c.phone || '').includes(q) ||
           (c.email || '').toLowerCase().includes(q) ||
           c.vehicles.some((v) =>
@@ -538,8 +569,8 @@ export default function Clients({
   }, [clients, search, filterMake]);
 
   const handleAddVehicleToNew = () => {
-    if (!vehicleSubForm.make.trim() || !vehicleSubForm.model.trim())
-      return setVehicleSubError('Značka a model jsou povinné.');
+    if (!vehicleSubForm.make.trim())
+      return setVehicleSubError('Značka je povinná.');
     setVehicleSubError('');
     setNewClientVehicles((prev) => [...prev, { ...vehicleSubForm }]);
     setVehicleSubForm(EMPTY_VEHICLE_FORM);
@@ -612,7 +643,7 @@ export default function Clients({
 
           {/* Basic info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            <Field label="Jméno a příjmení / název firmy" value={clientForm.name} onChange={(v) => setClientForm({ ...clientForm, name: v })} placeholder="Jan Novák" required />
+            <Field label="Jméno a příjmení" value={clientForm.name} onChange={(v) => setClientForm({ ...clientForm, name: v })} placeholder="Jan Novák" required />
             <Field label="Telefon" value={clientForm.phone} onChange={(v) => setClientForm({ ...clientForm, phone: v })} placeholder="+420 777 123 456" />
             <Field label="E-mail" type="email" value={clientForm.email} onChange={(v) => setClientForm({ ...clientForm, email: v })} placeholder="jan@example.com" />
             <Field label="Poznámka" value={clientForm.note} onChange={(v) => setClientForm({ ...clientForm, note: v })} placeholder="VIP klient, alergie na…" />
@@ -631,6 +662,22 @@ export default function Clients({
           </div>
           {clientForm.isCompany && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-800 pt-3 mb-4">
+              <Field label="Název firmy" value={clientForm.companyName} onChange={(v) => setClientForm({ ...clientForm, companyName: v })} placeholder="ABC s.r.o." span={2} />
+              {clientForm.companyName?.trim() && (
+                <div className="sm:col-span-2">
+                  <div className="text-xs font-medium text-slate-400 mb-2">Zobrazovat primárně jako</div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setClientForm({ ...clientForm, displayAs: 'name' })}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${clientForm.displayAs === 'name' ? 'bg-orange-500/15 border-orange-500/40 text-orange-300' : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'}`}>
+                      Jméno a příjmení
+                    </button>
+                    <button type="button" onClick={() => setClientForm({ ...clientForm, displayAs: 'company' })}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${clientForm.displayAs === 'company' ? 'bg-orange-500/15 border-orange-500/40 text-orange-300' : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'}`}>
+                      Název firmy
+                    </button>
+                  </div>
+                </div>
+              )}
               <Field label="IČO" value={clientForm.ico} onChange={(v) => setClientForm({ ...clientForm, ico: v })} placeholder="12345678" />
               <Field label="DIČ" value={clientForm.dic} onChange={(v) => setClientForm({ ...clientForm, dic: v })} placeholder="CZ12345678" />
               <Field label="Fakturační adresa" value={clientForm.billingAddress} onChange={(v) => setClientForm({ ...clientForm, billingAddress: v })} placeholder="Ulice 1, Praha 1" span={2} />
@@ -680,7 +727,7 @@ export default function Clients({
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 space-y-3">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <Field label="Značka"   value={vehicleSubForm.make}         onChange={(v) => setVehicleSubForm({ ...vehicleSubForm, make: v })}         placeholder="Škoda"    required />
-                  <Field label="Model"    value={vehicleSubForm.model}        onChange={(v) => setVehicleSubForm({ ...vehicleSubForm, model: v })}        placeholder="Octavia"  required />
+                  <Field label="Model"    value={vehicleSubForm.model}        onChange={(v) => setVehicleSubForm({ ...vehicleSubForm, model: v })}        placeholder="Octavia" />
                   <Field label="Rok"      value={vehicleSubForm.year}         onChange={(v) => setVehicleSubForm({ ...vehicleSubForm, year: v })}         placeholder="2022" />
                   <Field label="SPZ"      value={vehicleSubForm.licensePlate} onChange={(v) => setVehicleSubForm({ ...vehicleSubForm, licensePlate: v })} placeholder="1AB 2345" />
                   <Field label="Barva"    value={vehicleSubForm.color}        onChange={(v) => setVehicleSubForm({ ...vehicleSubForm, color: v })}        placeholder="černá" />
@@ -772,14 +819,14 @@ export default function Clients({
               {/* Avatar */}
               <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0 group-hover:border-orange-500/30 transition-colors">
                 <span className="text-sm font-bold text-slate-400 group-hover:text-orange-400 transition-colors">
-                  {initials(client.name)}
+                  {initials(getDisplayName(client))}
                 </span>
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-white">{formatName(client.name)}</span>
+                  <span className="text-sm font-semibold text-white">{displayFormatted(client)}</span>
                   {client.isCompany && (
                     <span className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20">Firma</span>
                   )}
