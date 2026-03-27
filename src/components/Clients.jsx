@@ -198,7 +198,7 @@ function ClientDetail({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-white">{displayFormatted(client)}</h1>
-                {client.isCompany && (
+                {!!client.isCompany && (
                   <span className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20">Firma</span>
                 )}
               </div>
@@ -215,7 +215,7 @@ function ClientDetail({
                 )}
                 {client.note && <span className="italic">{client.note}</span>}
               </div>
-              {client.isCompany && (client.ico || client.dic || client.billingAddress) && (
+              {!!client.isCompany && (client.ico || client.dic || client.billingAddress) && (
                 <div className="flex flex-wrap gap-3 mt-1 text-xs text-slate-500">
                   {client.ico && <span>IČO: {client.ico}</span>}
                   {client.dic && <span>DIČ: {client.dic}</span>}
