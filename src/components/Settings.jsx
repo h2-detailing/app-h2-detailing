@@ -29,7 +29,7 @@ export default function Settings({ settings, onSave, user }) {
     e.preventDefault();
     onSave({
       ...form,
-      pausal: parseFloat(form.pausal) || 1500,
+      pausal: form.pausal === '' ? 0 : (parseFloat(form.pausal) ?? 0),
       split: Math.min(100, Math.max(0, parseInt(form.split) || 50)),
     });
     setSaved(true);
