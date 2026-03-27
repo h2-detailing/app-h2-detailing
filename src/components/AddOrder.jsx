@@ -150,7 +150,7 @@ function ServicePicker({ onApply, customPrices = {} }) {
                   {SERVICES.interior.packages.map((pkg) => {
                     const active = selectedPackage === pkg.id;
                     return (
-                      <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/40 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/40'}`}>
+                      <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/60 bg-orange-500/15' : 'border-slate-700/60 bg-slate-800/40'}`}>
                         <label className="flex items-start gap-2 cursor-pointer px-2.5 py-2">
                           <input type="radio" name="pkg" value={pkg.id} checked={active} onChange={() => { setSelectedPackage(pkg.id); setSelectedAddons([]); }} className="accent-orange-500 mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -242,7 +242,7 @@ function ServicePicker({ onApply, customPrices = {} }) {
                   {SERVICES.exterior.packages.map((pkg) => {
                     const active = selectedExtPackage === pkg.id;
                     return (
-                      <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/40 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/40'}`}>
+                      <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/60 bg-orange-500/15' : 'border-slate-700/60 bg-slate-800/40'}`}>
                         <label className="flex items-start gap-2 cursor-pointer px-2.5 py-2">
                           <input type="radio" name="ext-pkg" value={pkg.id} checked={active} onChange={() => { setSelectedExtPackage(pkg.id); setSelectedExtAddons([]); }} className="accent-orange-500 mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
