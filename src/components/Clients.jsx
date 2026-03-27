@@ -98,6 +98,7 @@ function ClientDetail({
   onAddVehicle,
   onUpdateVehicle,
   onDeleteVehicle,
+  onEditOrder,
 }) {
   const [editingClient, setEditingClient]   = useState(false);
   const [editClientForm, setEditClientForm] = useState(EMPTY_CLIENT_FORM);
@@ -442,7 +443,12 @@ function ClientDetail({
                           ) : (
                             <div className="divide-y divide-slate-800/60">
                               {vOrders.map((o) => (
-                                <div key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/30 transition-colors">
+                                <button
+                                  key={o.id}
+                                  type="button"
+                                  onClick={() => onEditOrder && onEditOrder(o)}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/40 transition-colors text-left"
+                                >
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                       {o.orderNumber && (
@@ -460,7 +466,7 @@ function ClientDetail({
                                   <div className="text-sm font-semibold text-orange-400 flex-shrink-0">
                                     {formatCzk(Number(o.price))}
                                   </div>
-                                </div>
+                                </button>
                               ))}
                               <div className="flex justify-between items-center px-4 py-2 bg-slate-800/20">
                                 <span className="text-xs text-slate-500">{vOrders.length} zakázek celkem</span>
@@ -487,7 +493,12 @@ function ClientDetail({
           </h2>
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-800">
             {ungroupedOrders.map((o) => (
-              <div key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/30 transition-colors">
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => onEditOrder && onEditOrder(o)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/40 transition-colors text-left"
+              >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {o.orderNumber && (
@@ -503,7 +514,7 @@ function ClientDetail({
                 <div className="text-sm font-semibold text-orange-400 flex-shrink-0">
                   {formatCzk(Number(o.price))}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -523,6 +534,7 @@ export default function Clients({
   onAddVehicle,
   onUpdateVehicle,
   onDeleteVehicle,
+  onEditOrder,
 }) {
   const [detailClientId,    setDetailClientId]    = useState(null);
   const [showAddForm,       setShowAddForm]        = useState(false);
@@ -611,6 +623,7 @@ export default function Clients({
         onAddVehicle={onAddVehicle}
         onUpdateVehicle={onUpdateVehicle}
         onDeleteVehicle={onDeleteVehicle}
+        onEditOrder={onEditOrder}
       />
     );
   }

@@ -242,6 +242,7 @@ export default function App() {
           await api.deleteVehicle(vehicleId);
           setClients(await api.getClients());
         }}
+        onEditOrder={(order) => { setEditingOrder(order); setView('edit-order'); }}
       />
     ),
     settings: (

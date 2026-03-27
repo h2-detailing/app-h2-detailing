@@ -25,19 +25,14 @@ function Stepper({ value, onChange, onRemove }) {
 
 function ServicePicker({ onApply, customPrices = {} }) {
   const p = (id, def) => customPrices[id] ?? def;
-  const [openSections, setOpenSections] = useState({ interior: true, exterior: false, upholstery: false });
-  const toggleSection = (key) => {
-    setOpenSections(s => {
-      const opening = !s[key];
-      if (key === 'exterior' && opening && selectedExtPackage === '') setSelectedExtPackage('ext-wash');
-      return { ...s, [key]: opening };
-    });
-  };
+
+  // Which sections are enabled (only enabled sections count toward total)
+  const [enabled, setEnabled] = useState({ interior: true, exterior: false, upholstery: false });
 
   // Interior
   const [selectedPackage, setSelectedPackage] = useState('int-base');
-  const [selectedAddons, setSelectedAddons] = useState([]);        // non-vehicle package addons (e.g. Světlý interiér)
-  const [selectedVehicleAddons, setSelectedVehicleAddons] = useState([]); // KOMBI/SUV — shared across all packages
+  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [selectedVehicleAddons, setSelectedVehicleAddons] = useState([]);
   const [extras, setExtras] = useState({});
   const [expandedPkg, setExpandedPkg] = useState(null);
 
@@ -51,275 +46,301 @@ function ServicePicker({ onApply, customPrices = {} }) {
   const [upholstery, setUpholstery] = useState({});
   const [upholsteryTab, setUpholsteryTab] = useState('fabric');
 
+  const toggleEnabled = (key) => {
+    setEnabled((s) => {
+      const nowEnabled = !s[key];
+      if (key === 'exterior' && nowEnabled && selectedExtPackage === '') setSelectedExtPackage('ext-wash');
+      return { ...s, [key]: nowEnabled };
+    });
+  };
+
   const toggleAddon        = (id) => setSelectedAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleVehicleAddon = (id) => setSelectedVehicleAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  const toggleExtAddon = (id) => setSelectedExtAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  const toggleExtra    = (id) => setExtras((prev) => prev[id] ? (({ [id]: _, ...rest }) => rest)(prev) : { ...prev, [id]: 1 });
-  const toggleExtExtra = (id) => setExtExtras((prev) => { const n = { ...prev }; n[id] ? delete n[id] : (n[id] = 1); return n; });
-  const toggleUph      = (id) => setUpholstery((prev) => prev[id] ? (({ [id]: _, ...rest }) => rest)(prev) : { ...prev, [id]: 1 });
-  const updateQty      = (setMap, id, qty) => setMap((prev) => ({ ...prev, [id]: qty }));
+  const toggleExtAddon     = (id) => setSelectedExtAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const toggleExtra        = (id) => setExtras((prev) => prev[id] ? (({ [id]: _, ...rest }) => rest)(prev) : { ...prev, [id]: 1 });
+  const toggleExtExtra     = (id) => setExtExtras((prev) => { const n = { ...prev }; n[id] ? delete n[id] : (n[id] = 1); return n; });
+  const toggleUph          = (id) => setUpholstery((prev) => prev[id] ? (({ [id]: _, ...rest }) => rest)(prev) : { ...prev, [id]: 1 });
+  const updateQty          = (setMap, id, qty) => setMap((prev) => ({ ...prev, [id]: qty }));
 
-  const { total, serviceText } = useMemo(() => {
-    let t = 0;
+  const intVehicleAddons = SERVICES.interior.packages
+    .flatMap((pk) => (pk.addons ?? []).filter((a) => a.group === 'vehicle'))
+    .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i);
+
+  const { total, serviceText, sectionTotals } = useMemo(() => {
+    let intTotal = 0, extTotal = 0, uphTotal = 0;
     const parts = [];
 
-    // Interior package
-    if (selectedPackage) {
-      const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
-      if (pkg) {
-        t += p(pkg.id, pkg.price);
-        let pkgDesc = pkg.name;
-        // Non-vehicle package addons (e.g. Světlý interiér — only on Extra)
-        const pkgAddonObjs = selectedAddons.map((aid) => (pkg.addons ?? []).find((a) => a.id === aid && a.group !== 'vehicle')).filter(Boolean);
-        pkgAddonObjs.forEach((a) => { t += p(a.id, a.price); });
-        // Vehicle addons (KOMBI/SUV) — shared across all interior packages
-        const intVehicleAddons = SERVICES.interior.packages.flatMap((pk) => (pk.addons ?? []).filter((a) => a.group === 'vehicle')).filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i);
-        const vehicleAddonObjs = selectedVehicleAddons.map((vid) => intVehicleAddons.find((a) => a.id === vid)).filter(Boolean);
-        vehicleAddonObjs.forEach((a) => { t += p(a.id, a.price); });
-        const allAddonDescs = [...pkgAddonObjs, ...vehicleAddonObjs];
-        if (allAddonDescs.length) pkgDesc += ' + ' + allAddonDescs.map((a) => a.name).join(', ');
-        parts.push(pkgDesc);
+    if (enabled.interior) {
+      if (selectedPackage) {
+        const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
+        if (pkg) {
+          intTotal += p(pkg.id, pkg.price);
+          let pkgDesc = pkg.name;
+          const nonVehAddons = selectedAddons.map((aid) => (pkg.addons ?? []).find((a) => a.id === aid && a.group !== 'vehicle')).filter(Boolean);
+          nonVehAddons.forEach((a) => { intTotal += p(a.id, a.price); });
+          const vehAddonObjs = selectedVehicleAddons.map((vid) => intVehicleAddons.find((a) => a.id === vid)).filter(Boolean);
+          vehAddonObjs.forEach((a) => { intTotal += p(a.id, a.price); });
+          const allDescs = [...nonVehAddons, ...vehAddonObjs];
+          if (allDescs.length) pkgDesc += ' + ' + allDescs.map((a) => a.name).join(', ');
+          parts.push(pkgDesc);
+        }
       }
+      SERVICES.interior.extras.forEach((ex) => {
+        if (extras[ex.id]) { intTotal += p(ex.id, ex.price) * extras[ex.id]; parts.push(ex.unit ? `${ex.name} (${extras[ex.id]} ks)` : ex.name); }
+      });
     }
-    SERVICES.interior.extras.forEach((ex) => {
-      if (extras[ex.id]) { t += p(ex.id, ex.price) * extras[ex.id]; parts.push(ex.unit ? `${ex.name} (${extras[ex.id]} ks)` : ex.name); }
-    });
 
-    // Exterior package
-    if (selectedExtPackage) {
-      const pkg = SERVICES.exterior.packages.find((pk) => pk.id === selectedExtPackage);
-      if (pkg) {
-        t += p(pkg.id, pkg.price);
-        let pkgDesc = pkg.name;
-        const addonObjs = selectedExtAddons.map((aid) => pkg.addons?.find((a) => a.id === aid)).filter(Boolean);
-        addonObjs.forEach((a) => { t += p(a.id, a.price); });
-        if (addonObjs.length) pkgDesc += ' + ' + addonObjs.map((a) => a.name).join(', ');
-        parts.push(pkgDesc);
+    if (enabled.exterior) {
+      if (selectedExtPackage) {
+        const pkg = SERVICES.exterior.packages.find((pk) => pk.id === selectedExtPackage);
+        if (pkg) {
+          extTotal += p(pkg.id, pkg.price);
+          let pkgDesc = pkg.name;
+          const addonObjs = selectedExtAddons.map((aid) => pkg.addons?.find((a) => a.id === aid)).filter(Boolean);
+          addonObjs.forEach((a) => { extTotal += p(a.id, a.price); });
+          if (addonObjs.length) pkgDesc += ' + ' + addonObjs.map((a) => a.name).join(', ');
+          parts.push(pkgDesc);
+        }
       }
+      SERVICES.exterior.extras.forEach((ex) => {
+        if (extExtras[ex.id]) { extTotal += p(ex.id, ex.price); parts.push(ex.name); }
+      });
     }
-    SERVICES.exterior.extras.forEach((ex) => {
-      if (extExtras[ex.id]) { t += p(ex.id, ex.price); parts.push(ex.name); }
-    });
 
-    // Upholstery
-    [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
-      if (upholstery[item.id]) { t += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
-    });
+    if (enabled.upholstery) {
+      [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
+        if (upholstery[item.id]) { uphTotal += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
+      });
+    }
 
-    return { total: t, serviceText: parts.join(', ') };
+    return { total: intTotal + extTotal + uphTotal, serviceText: parts.join(', '), sectionTotals: { interior: intTotal, exterior: extTotal, upholstery: uphTotal } };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
+  }, [enabled, selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
 
-  const hasSelection = !!selectedPackage || selectedVehicleAddons.length > 0 || Object.keys(extras).length > 0 || !!selectedExtPackage || Object.keys(extExtras).length > 0 || Object.keys(upholstery).length > 0;
-  const sectionBtnCls = (key) => `px-3 py-1.5 rounded-md text-xs font-medium transition-all ${openSections[key] ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'text-slate-400 hover:text-white border border-transparent'}`;
   const subCls = (id, active) => `px-3 py-1 rounded text-xs font-medium transition-all ${active === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`;
 
-  return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-4">
-      <div className="flex gap-1 bg-slate-900 rounded-lg p-1 w-fit">
-        <button type="button" className={sectionBtnCls('interior')}   onClick={() => toggleSection('interior')}>Interiér</button>
-        <button type="button" className={sectionBtnCls('exterior')}   onClick={() => toggleSection('exterior')}>Exteriér</button>
-        <button type="button" className={sectionBtnCls('upholstery')} onClick={() => toggleSection('upholstery')}>Čalounění</button>
+  const PanelHeader = ({ sKey, label }) => (
+    <button
+      type="button"
+      onClick={() => toggleEnabled(sKey)}
+      className="w-full flex items-center gap-2.5 p-3"
+    >
+      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${enabled[sKey] ? 'bg-orange-500 border-orange-500' : 'border-slate-600 bg-slate-800/60'}`}>
+        {enabled[sKey] && <Check className="w-2.5 h-2.5 text-white" />}
       </div>
-
-      {openSections.interior && (
-        <div className="space-y-4">
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
-            {/* 2-column package cards */}
-            <div className="grid grid-cols-2 gap-2">
-              {SERVICES.interior.packages.map((pkg) => {
-                const active = selectedPackage === pkg.id;
-                return (
-                  <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/40 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/40'}`}>
-                    <label className="flex items-start gap-2 cursor-pointer px-3 py-2.5">
-                      <input type="radio" name="pkg" value={pkg.id} checked={active} onChange={() => { setSelectedPackage(pkg.id); setSelectedAddons([]); }} className="accent-orange-500 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white font-medium leading-snug">{pkg.name}</div>
-                        <div className="text-xs text-orange-400 font-semibold mt-0.5">od {formatCzk(p(pkg.id, pkg.price))}</div>
-                      </div>
-                      <button type="button" onClick={(e) => { e.preventDefault(); setExpandedPkg(expandedPkg === pkg.id ? null : pkg.id); }} className="text-slate-500 hover:text-slate-300 flex-shrink-0 mt-0.5">
-                        {expandedPkg === pkg.id ? <ChevronUp className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                    </label>
-                    {expandedPkg === pkg.id && (
-                      <div className="px-3 pb-3 border-t border-slate-700/40">
-                        <ul className="mt-2 space-y-1">
-                          {pkg.includes.map((item) => (
-                            <li key={item} className="text-xs text-slate-500 flex items-center gap-1.5">
-                              <Check className="w-3 h-3 text-orange-500/60 flex-shrink-0" />{item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {/* Non-vehicle addons for selected package (e.g. Světlý interiér — only on Extra) */}
-            {(() => {
-              const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
-              const nonVehicle = (pkg?.addons ?? []).filter((a) => a.group !== 'vehicle');
-              return nonVehicle.length > 0 ? (
-                <div className="mt-2 border border-slate-700/40 rounded-lg px-3 pt-2 pb-3 space-y-1.5">
-                  {nonVehicle.map((addon) => (
-                    <label key={addon.id} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
-                      <span className="text-xs text-slate-300">{addon.name}</span>
-                      <span className="text-xs text-orange-400 ml-auto">+{formatCzk(p(addon.id, addon.price))}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : null;
-            })()}
-            {/* Bez balíčku — de-emphasised, below the cards */}
-            <label className="flex items-center gap-2 cursor-pointer mt-2 px-1">
-              <input type="radio" name="pkg" value="" checked={selectedPackage === ''} onChange={() => { setSelectedPackage(''); setSelectedAddons([]); }} className="accent-orange-500" />
-              <span className="text-sm text-slate-500">Bez balíčku</span>
-            </label>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Extra služby</div>
-            <div className="space-y-2">
-              {SERVICES.interior.extras.map((ex) => (
-                <div key={ex.id} className="flex items-center gap-2">
-                  <input type="checkbox" checked={!!extras[ex.id]} onChange={() => toggleExtra(ex.id)} className="accent-orange-500" />
-                  <span className="flex-1 text-sm text-slate-300">{ex.name}</span>
-                  {ex.unit ? (
-                    <>
-                      {extras[ex.id] && <Stepper value={extras[ex.id]} onChange={(q) => updateQty(setExtras, ex.id, q)} onRemove={() => toggleExtra(ex.id)} />}
-                      <span className="text-xs text-slate-500 w-20 text-right">{extras[ex.id] ? formatCzk(p(ex.id, ex.price) * extras[ex.id]) : `${p(ex.id, ex.price)} Kč/ks`}</span>
-                    </>
-                  ) : (
-                    <span className="text-xs text-slate-500 w-16 text-right">{formatCzk(p(ex.id, ex.price))}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* KOMBI / SUV — available for any interior package */}
-          {selectedPackage !== '' && (() => {
-            const vehicleAddons = SERVICES.interior.packages
-              .flatMap((pk) => (pk.addons ?? []).filter((a) => a.group === 'vehicle'))
-              .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i);
-            return vehicleAddons.length > 0 ? (
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Typ vozidla</div>
-                <div className="space-y-2">
-                  {vehicleAddons.map((addon) => (
-                    <div key={addon.id} className="flex items-center gap-2">
-                      <input type="checkbox" checked={selectedVehicleAddons.includes(addon.id)} onChange={() => toggleVehicleAddon(addon.id)} className="accent-orange-500" />
-                      <span className="flex-1 text-sm text-slate-300">{addon.name}</span>
-                      <span className="text-xs text-slate-500 w-16 text-right">+{formatCzk(p(addon.id, addon.price))}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null;
-          })()}
-        </div>
+      <span className={`text-sm font-semibold transition-colors ${enabled[sKey] ? 'text-white' : 'text-slate-500'}`}>{label}</span>
+      {enabled[sKey] && sectionTotals[sKey] > 0 && (
+        <span className="ml-auto text-xs text-orange-400 font-semibold tabular-nums">{formatCzk(sectionTotals[sKey])}</span>
       )}
+    </button>
+  );
 
-      {openSections.exterior && (
-        <div className="space-y-4">
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="ext-pkg" value="" checked={selectedExtPackage === ''} onChange={() => { setSelectedExtPackage(''); setSelectedExtAddons([]); }} className="accent-orange-500" />
-                <span className="text-sm text-slate-400">Bez balíčku</span>
-              </label>
-              {SERVICES.exterior.packages.map((pkg) => (
-                <div key={pkg.id} className="rounded-lg border border-slate-700/60 bg-slate-800/40 overflow-hidden">
-                  <label className="flex items-center gap-2 cursor-pointer px-3 py-2.5">
-                    <input type="radio" name="ext-pkg" value={pkg.id} checked={selectedExtPackage === pkg.id} onChange={() => { setSelectedExtPackage(pkg.id); setSelectedExtAddons([]); }} className="accent-orange-500" />
-                    <span className="flex-1 text-sm text-white font-medium">{pkg.name}</span>
-                    <span className="text-xs text-orange-400 font-semibold">od {formatCzk(p(pkg.id, pkg.price))}</span>
-                    <button type="button" onClick={(e) => { e.preventDefault(); setExpandedExtPkg(expandedExtPkg === pkg.id ? null : pkg.id); }} className="text-slate-500 hover:text-slate-300 ml-1">
-                      {expandedExtPkg === pkg.id ? <ChevronUp className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                  </label>
-                  {expandedExtPkg === pkg.id && (
-                    <div className="px-4 pb-3 border-t border-slate-700/40">
-                      <ul className="mt-2 space-y-1">
-                        {pkg.includes.map((item) => (
-                          <li key={item} className="text-xs text-slate-500 flex items-center gap-1.5">
-                            <Check className="w-3 h-3 text-orange-500/60 flex-shrink-0" />{item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {selectedExtPackage === pkg.id && pkg.addons?.length > 0 && (
-                    <div className="px-4 pb-3 border-t border-slate-700/40 pt-2 space-y-1.5">
-                      <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide pt-1">Typ vozidla</div>
-                      {pkg.addons.map((addon) => (
+  return (
+    <div className="space-y-3">
+      {/* 3 panels side-by-side on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+        {/* ── INTERIÉR ── */}
+        <div className={`rounded-xl border transition-all ${enabled.interior ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`}>
+          <PanelHeader sKey="interior" label="Interiér" />
+          {enabled.interior && (
+            <div className="px-3 pb-3 border-t border-slate-700/30 pt-3 space-y-4">
+              <div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {SERVICES.interior.packages.map((pkg) => {
+                    const active = selectedPackage === pkg.id;
+                    return (
+                      <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/40 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/40'}`}>
+                        <label className="flex items-start gap-2 cursor-pointer px-2.5 py-2">
+                          <input type="radio" name="pkg" value={pkg.id} checked={active} onChange={() => { setSelectedPackage(pkg.id); setSelectedAddons([]); }} className="accent-orange-500 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-white font-medium leading-snug">{pkg.name}</div>
+                            <div className="text-[11px] text-orange-400 font-semibold mt-0.5">{formatCzk(p(pkg.id, pkg.price))}</div>
+                          </div>
+                          <button type="button" onClick={(e) => { e.preventDefault(); setExpandedPkg(expandedPkg === pkg.id ? null : pkg.id); }} className="text-slate-500 hover:text-slate-300 flex-shrink-0 mt-0.5">
+                            {expandedPkg === pkg.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </button>
+                        </label>
+                        {expandedPkg === pkg.id && (
+                          <div className="px-2.5 pb-2.5 border-t border-slate-700/40">
+                            <ul className="mt-2 space-y-1">
+                              {pkg.includes.map((item) => (
+                                <li key={item} className="text-[10px] text-slate-500 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5 text-orange-500/60 flex-shrink-0" />{item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
+                  const nonVehicle = (pkg?.addons ?? []).filter((a) => a.group !== 'vehicle');
+                  return nonVehicle.length > 0 ? (
+                    <div className="mt-2 border border-slate-700/40 rounded-lg px-2.5 pt-2 pb-2.5 space-y-1.5">
+                      {nonVehicle.map((addon) => (
                         <label key={addon.id} className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={selectedExtAddons.includes(addon.id)} onChange={() => toggleExtAddon(addon.id)} className="accent-orange-500" />
-                          <span className="text-xs text-slate-300">{addon.name}</span>
-                          <span className="text-xs text-orange-400 ml-auto">+{formatCzk(p(addon.id, addon.price))}</span>
+                          <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
+                          <span className="text-xs text-slate-300 flex-1">{addon.name}</span>
+                          <span className="text-xs text-orange-400">+{formatCzk(p(addon.id, addon.price))}</span>
                         </label>
                       ))}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Extra služby</div>
-            <div className="space-y-2">
-              {SERVICES.exterior.extras.map((ex) => (
-                <div key={ex.id} className="flex items-center gap-2">
-                  <input type="checkbox" checked={!!extExtras[ex.id]} onChange={() => toggleExtExtra(ex.id)} className="accent-orange-500" />
-                  <span className="flex-1 text-sm text-slate-300">{ex.name}</span>
-                  <span className="text-xs text-slate-500 w-16 text-right">{formatCzk(p(ex.id, ex.price))}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {openSections.upholstery && (
-        <div className="space-y-3">
-          <div className="flex gap-1">
-            <button type="button" className={subCls('fabric', upholsteryTab)} onClick={() => setUpholsteryTab('fabric')}>Látka</button>
-            <button type="button" className={subCls('leather', upholsteryTab)} onClick={() => setUpholsteryTab('leather')}>Kůže</button>
-          </div>
-          <div className="space-y-2">
-            {(upholsteryTab === 'fabric' ? SERVICES.upholstery.fabric : SERVICES.upholstery.leather).map((item) => (
-              <div key={item.id} className="flex items-center gap-2">
-                <input type="checkbox" checked={!!upholstery[item.id]} onChange={() => toggleUph(item.id)} className="accent-orange-500" />
-                <span className="flex-1 text-sm text-slate-300">{item.name}</span>
-                {upholstery[item.id] && <Stepper value={upholstery[item.id]} onChange={(q) => updateQty(setUpholstery, item.id, q)} onRemove={() => toggleUph(item.id)} />}
-                <span className="text-xs text-slate-500 w-24 text-right">
-                  {upholstery[item.id] ? `od ${formatCzk(p(item.id, item.price) * upholstery[item.id])}` : `od ${formatCzk(p(item.id, item.price))}`}
-                </span>
+                  ) : null;
+                })()}
+                <label className="flex items-center gap-2 cursor-pointer mt-2 px-1">
+                  <input type="radio" name="pkg" value="" checked={selectedPackage === ''} onChange={() => { setSelectedPackage(''); setSelectedAddons([]); }} className="accent-orange-500" />
+                  <span className="text-xs text-slate-500">Bez balíčku</span>
+                </label>
               </div>
-            ))}
-          </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Extra služby</div>
+                <div className="space-y-1.5">
+                  {SERVICES.interior.extras.map((ex) => (
+                    <div key={ex.id} className="flex items-center gap-2">
+                      <input type="checkbox" checked={!!extras[ex.id]} onChange={() => toggleExtra(ex.id)} className="accent-orange-500" />
+                      <span className="flex-1 text-xs text-slate-300">{ex.name}</span>
+                      {ex.unit ? (
+                        <>
+                          {extras[ex.id] && <Stepper value={extras[ex.id]} onChange={(q) => updateQty(setExtras, ex.id, q)} onRemove={() => toggleExtra(ex.id)} />}
+                          <span className="text-xs text-slate-500 w-16 text-right">{extras[ex.id] ? formatCzk(p(ex.id, ex.price) * extras[ex.id]) : `${p(ex.id, ex.price)} Kč/ks`}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-slate-500 text-right">{formatCzk(p(ex.id, ex.price))}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {selectedPackage !== '' && intVehicleAddons.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Typ vozidla</div>
+                  <div className="space-y-1.5">
+                    {intVehicleAddons.map((addon) => (
+                      <div key={addon.id} className="flex items-center gap-2">
+                        <input type="checkbox" checked={selectedVehicleAddons.includes(addon.id)} onChange={() => toggleVehicleAddon(addon.id)} className="accent-orange-500" />
+                        <span className="flex-1 text-xs text-slate-300">{addon.name}</span>
+                        <span className="text-xs text-slate-500 text-right">+{formatCzk(p(addon.id, addon.price))}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="border-t border-slate-700 pt-3 flex items-center justify-between gap-3">
+        {/* ── EXTERIÉR ── */}
+        <div className={`rounded-xl border transition-all ${enabled.exterior ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`}>
+          <PanelHeader sKey="exterior" label="Exteriér" />
+          {enabled.exterior && (
+            <div className="px-3 pb-3 border-t border-slate-700/30 pt-3 space-y-4">
+              <div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
+                <div className="space-y-1.5">
+                  {SERVICES.exterior.packages.map((pkg) => {
+                    const active = selectedExtPackage === pkg.id;
+                    return (
+                      <div key={pkg.id} className={`rounded-lg border overflow-hidden transition-all ${active ? 'border-orange-500/40 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/40'}`}>
+                        <label className="flex items-start gap-2 cursor-pointer px-2.5 py-2">
+                          <input type="radio" name="ext-pkg" value={pkg.id} checked={active} onChange={() => { setSelectedExtPackage(pkg.id); setSelectedExtAddons([]); }} className="accent-orange-500 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-white font-medium leading-snug">{pkg.name}</div>
+                            <div className="text-[11px] text-orange-400 font-semibold mt-0.5">{formatCzk(p(pkg.id, pkg.price))}</div>
+                          </div>
+                          <button type="button" onClick={(e) => { e.preventDefault(); setExpandedExtPkg(expandedExtPkg === pkg.id ? null : pkg.id); }} className="text-slate-500 hover:text-slate-300 flex-shrink-0 mt-0.5">
+                            {expandedExtPkg === pkg.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </button>
+                        </label>
+                        {expandedExtPkg === pkg.id && (
+                          <div className="px-2.5 pb-2.5 border-t border-slate-700/40">
+                            <ul className="mt-2 space-y-1">
+                              {pkg.includes.map((item) => (
+                                <li key={item} className="text-[10px] text-slate-500 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5 text-orange-500/60 flex-shrink-0" />{item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {active && pkg.addons?.length > 0 && (
+                          <div className="px-2.5 pb-2.5 border-t border-slate-700/40 pt-2 space-y-1.5">
+                            <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide">Typ vozidla</div>
+                            {pkg.addons.map((addon) => (
+                              <label key={addon.id} className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={selectedExtAddons.includes(addon.id)} onChange={() => toggleExtAddon(addon.id)} className="accent-orange-500" />
+                                <span className="text-xs text-slate-300 flex-1">{addon.name}</span>
+                                <span className="text-xs text-orange-400">+{formatCzk(p(addon.id, addon.price))}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <label className="flex items-center gap-2 cursor-pointer px-1">
+                    <input type="radio" name="ext-pkg" value="" checked={selectedExtPackage === ''} onChange={() => { setSelectedExtPackage(''); setSelectedExtAddons([]); }} className="accent-orange-500" />
+                    <span className="text-xs text-slate-500">Bez balíčku</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Extra služby</div>
+                <div className="space-y-1.5">
+                  {SERVICES.exterior.extras.map((ex) => (
+                    <div key={ex.id} className="flex items-center gap-2">
+                      <input type="checkbox" checked={!!extExtras[ex.id]} onChange={() => toggleExtExtra(ex.id)} className="accent-orange-500" />
+                      <span className="flex-1 text-xs text-slate-300">{ex.name}</span>
+                      <span className="text-xs text-slate-500 text-right">{formatCzk(p(ex.id, ex.price))}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── ČALOUNĚNÍ ── */}
+        <div className={`rounded-xl border transition-all ${enabled.upholstery ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`}>
+          <PanelHeader sKey="upholstery" label="Čalounění" />
+          {enabled.upholstery && (
+            <div className="px-3 pb-3 border-t border-slate-700/30 pt-3 space-y-3">
+              <div className="flex gap-1">
+                <button type="button" className={subCls('fabric', upholsteryTab)} onClick={() => setUpholsteryTab('fabric')}>Látka</button>
+                <button type="button" className={subCls('leather', upholsteryTab)} onClick={() => setUpholsteryTab('leather')}>Kůže</button>
+              </div>
+              <div className="space-y-1.5">
+                {(upholsteryTab === 'fabric' ? SERVICES.upholstery.fabric : SERVICES.upholstery.leather).map((item) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <input type="checkbox" checked={!!upholstery[item.id]} onChange={() => toggleUph(item.id)} className="accent-orange-500" />
+                    <span className="flex-1 text-xs text-slate-300">{item.name}</span>
+                    {upholstery[item.id] && <Stepper value={upholstery[item.id]} onChange={(q) => updateQty(setUpholstery, item.id, q)} onRemove={() => toggleUph(item.id)} />}
+                    <span className="text-xs text-slate-500 text-right w-16">
+                      {upholstery[item.id] ? formatCzk(p(item.id, item.price) * upholstery[item.id]) : formatCzk(p(item.id, item.price))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* Total + Apply */}
+      <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
         <div>
           <div className="text-xs text-slate-500">Celkem ze služeb</div>
           <div className="text-lg font-bold text-white">{formatCzk(total)}</div>
         </div>
-        <div className="flex gap-2">
-          {hasSelection && (
-            <button type="button" onClick={() => { setSelectedPackage('int-base'); setSelectedAddons([]); setSelectedVehicleAddons([]); setExtras({}); setSelectedExtPackage(openSections.exterior ? 'ext-wash' : ''); setSelectedExtAddons([]); setExtExtras({}); setUpholstery({}); }}
-              className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
-              Vymazat
-            </button>
-          )}
-          <button type="button" onClick={() => onApply(total, serviceText)} disabled={total === 0}
-            className="px-4 py-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors">
-            Použít jako cenu
-          </button>
-        </div>
+        <button type="button" onClick={() => onApply(total, serviceText)} disabled={total === 0}
+          className="px-4 py-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors">
+          Použít jako cenu
+        </button>
       </div>
     </div>
   );
@@ -552,7 +573,6 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
   const [selectedClientId, setSelectedClientId] = useState(initialOrder?.clientId ?? '');
   const [selectedVehicleId, setSelectedVehicleId] = useState(initialOrder?.vehicleId ?? '');
   const [serviceText, setServiceText] = useState(getInitialServiceText);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountPct, setDiscountPct] = useState('');
   const [tipEnabled, setTipEnabled] = useState(false);
@@ -565,7 +585,10 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
   const discountAmount = Math.round(price * discountFraction);
   const tip = tipEnabled ? Math.max(parseFloat(tipAmount) || 0, 0) : 0;
   const finalPrice = price - discountAmount + tip;
-  const effectiveSplit = splitOverrideEnabled ? customSplit : split;
+  const autoSplit = form.workers.length === 1
+    ? (form.workers[0] === partner1 ? 100 : 0)
+    : split;
+  const effectiveSplit = splitOverrideEnabled ? customSplit : autoSplit;
   const p1 = Math.round(finalPrice * (effectiveSplit / 100));
   const p2 = finalPrice - p1;
 
@@ -636,6 +659,15 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* ── Service Picker — full width ── */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-5">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sestavit ze služeb</div>
+          <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
+            setForm((f) => ({ ...f, price: String(total) }));
+            setServiceText(desc);
+          }} />
+        </div>
+
         {/* ── Direct grid — cards are grid children so each row auto-aligns heights ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
@@ -676,20 +708,9 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
 
           {/* ROW 1 right ── Cena */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Cena pro zákazníka (Kč)</Label>
-              <button type="button" onClick={() => setPickerOpen((o) => !o)}
-                className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors -mt-1">
-                {pickerOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                {pickerOpen ? 'Skrýt ceník' : 'Sestavit ze služeb'}
-              </button>
-            </div>
-            {pickerOpen && (
-              <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
-                setForm((f) => ({ ...f, price: String(total) }));
-                setServiceText(desc);
-                setPickerOpen(false);
-              }} />
+            <Label>Cena pro zákazníka (Kč)</Label>
+            {serviceText && (
+              <p className="text-xs text-slate-500 -mt-1 truncate">{serviceText}</p>
             )}
             <input
               type="number" value={form.price}
@@ -816,8 +837,30 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
               </div>
             )}
 
+          </div>
+
+          {/* ROW 2 left ── Datum + Kdo pracoval */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+            <div>
+              <Label>Datum provedení zakázky</Label>
+              <div className="overflow-hidden">
+                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={inputCls} />
+              </div>
+            </div>
+            <div className="border-t border-slate-800 pt-4">
+              <Label>Kdo pracoval</Label>
+              <div className="flex gap-2">
+                {[partner1, partner2].map((p) => (
+                  <button key={p} type="button" onClick={() => toggleWorker(p)} className={toggleBtnCls(form.workers.includes(p))}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Split breakdown + override */}
             {finalPrice > 0 && (
-              <div className="space-y-2 pt-1">
+              <div className="border-t border-slate-800 pt-4 space-y-2">
                 <div className="flex gap-3">
                   <div className="flex-1 bg-slate-800/60 rounded-lg px-3 py-2">
                     <div className="text-xs text-slate-500">{partner1} · {effectiveSplit} %</div>
@@ -828,8 +871,6 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
                     <div className="text-sm font-semibold text-purple-400">{formatCzk(p2)}</div>
                   </div>
                 </div>
-
-                {/* Custom split toggle */}
                 <button
                   type="button"
                   onClick={() => { setSplitOverrideEnabled(e => !e); setCustomSplit(split); }}
@@ -840,7 +881,6 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
                   </span>
                   Upravit rozdělení pro tuto zakázku
                 </button>
-
                 {splitOverrideEnabled && (
                   <div className="bg-slate-800/60 border border-blue-500/20 rounded-xl p-3 space-y-3">
                     <div className="flex items-center justify-between text-xs text-slate-400">
@@ -874,24 +914,6 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
                 )}
               </div>
             )}
-          </div>
-
-          {/* ROW 2 left ── Datum + Kdo pracoval */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-            <div>
-              <Label>Datum provedení zakázky</Label>
-              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={inputCls} />
-            </div>
-            <div className="border-t border-slate-800 pt-4">
-              <Label>Kdo pracoval</Label>
-              <div className="flex gap-2">
-                {[partner1, partner2].map((p) => (
-                  <button key={p} type="button" onClick={() => toggleWorker(p)} className={toggleBtnCls(form.workers.includes(p))}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* ROW 2 right ── Časová náročnost + Poznámka */}
