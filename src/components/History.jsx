@@ -535,10 +535,11 @@ export default function History({
   orders, expenses, settings, clients = [],
   onDeleteOrder, onDeleteExpense,
   onUpdateOrder, onUpdateExpense,
+  onEditOrder,
 }) {
   const [filterMonth,   setFilterMonth]   = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [editItem,      setEditItem]      = useState(null); // { item, type }
+  const [editItem,      setEditItem]      = useState(null); // { item, type } — expenses only
 
   const availableMonths = useMemo(() => {
     const m = new Set([
@@ -674,7 +675,7 @@ export default function History({
                       </span>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => { setConfirmDelete(null); setEditItem({ item: order, type: 'order' }); }}
+                          onClick={() => { setConfirmDelete(null); onEditOrder?.(order); }}
                           className="p-1 text-slate-600 hover:text-orange-400 hover:bg-slate-800 rounded transition-colors"
                           title="Upravit"
                         >
@@ -766,15 +767,7 @@ export default function History({
         </div>
       </div>
 
-      {/* ── Edit modals ── */}
-      {editItem?.type === 'order' && (
-        <EditOrderModal
-          order={editItem.item}
-          settings={settings}
-          onSave={async (data) => { await onUpdateOrder(editItem.item.id, data); setEditItem(null); }}
-          onClose={() => setEditItem(null)}
-        />
-      )}
+      {/* ── Edit modals (expenses only — orders use full-page form) ── */}
       {editItem?.type === 'expense' && (
         <EditExpenseModal
           expense={editItem.item}

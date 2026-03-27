@@ -67,6 +67,7 @@ export default function App() {
   const [clients, setClients] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [view, setView] = useState('dashboard');
+  const [editingOrder, setEditingOrder] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -157,12 +158,32 @@ export default function App() {
         onCancel={() => setView('dashboard')}
       />
     ),
+    'edit-order': editingOrder ? (
+      <AddOrder
+        settings={settings}
+        clients={clients}
+        initialOrder={editingOrder}
+        onAdd={async (orderData) => {
+          await api.updateOrder(editingOrder.id, orderData);
+          setOrders(await api.getOrders());
+          setEditingOrder(null);
+          setView('history');
+        }}
+        onAddClient={async (data) => {
+          const created = await api.createClient(data);
+          setClients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+          return created;
+        }}
+        onCancel={() => { setEditingOrder(null); setView('history'); }}
+      />
+    ) : null,
     history: (
       <History
         orders={orders}
         expenses={expenses}
         settings={settings}
         clients={clients}
+        onEditOrder={(order) => { setEditingOrder(order); setView('edit-order'); }}
         onDeleteOrder={async (id) => {
           await api.deleteOrder(id);
           setOrders((prev) => prev.filter((o) => o.id !== id));

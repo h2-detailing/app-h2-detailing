@@ -387,28 +387,47 @@ function Label({ children, optional }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AddOrder({ settings, clients = [], onAdd, onAddClient, onCancel }) {
+export default function AddOrder({ settings, clients = [], onAdd, onAddClient, onCancel, initialOrder }) {
   const { partner1, partner2, split } = settings;
+  const isEditing = !!initialOrder;
+
+  // Extract service text from existing description by stripping auto-generated prefix
+  const getInitialServiceText = () => {
+    if (!initialOrder?.description) return '';
+    let text = initialOrder.description;
+    const client = clients.find(c => c.id === initialOrder.clientId);
+    const vehicle = client?.vehicles.find(v => v.id === initialOrder.vehicleId);
+    if (client) {
+      const cName = (client.isCompany && client.displayAs === 'company' && client.companyName?.trim())
+        ? client.companyName.trim() : client.name;
+      if (text.startsWith(cName + ' – ')) text = text.slice(cName.length + 3);
+    }
+    if (vehicle) {
+      const vName = `${vehicle.make} ${vehicle.model}${vehicle.year ? ` (${vehicle.year})` : ''}`;
+      if (text.startsWith(vName + ' – ')) text = text.slice(vName.length + 3);
+    }
+    return text;
+  };
 
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
-    price: '',
-    note: '',
-    workers: [partner1, partner2],
-    durationHours: '',
+    date: initialOrder?.date ?? new Date().toISOString().slice(0, 10),
+    price: initialOrder ? String(initialOrder.price) : '',
+    note: initialOrder?.note ?? '',
+    workers: initialOrder?.workers ?? [partner1, partner2],
+    durationHours: initialOrder?.durationHours ? String(initialOrder.durationHours) : '',
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [serviceText, setServiceText] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(initialOrder?.clientId ?? '');
+  const [selectedVehicleId, setSelectedVehicleId] = useState(initialOrder?.vehicleId ?? '');
+  const [serviceText, setServiceText] = useState(getInitialServiceText);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountPct, setDiscountPct] = useState('');
   const [tipEnabled, setTipEnabled] = useState(false);
   const [tipAmount, setTipAmount] = useState('');
-  const [splitOverrideEnabled, setSplitOverrideEnabled] = useState(false);
-  const [customSplit, setCustomSplit] = useState(split);
+  const [splitOverrideEnabled, setSplitOverrideEnabled] = useState(initialOrder?.splitOverride != null);
+  const [customSplit, setCustomSplit] = useState(initialOrder?.splitOverride ?? split);
 
   const price = parseFloat(form.price) || 0;
   const discountFraction = discountEnabled ? Math.min(Math.max(parseFloat(discountPct) || 0, 0), 100) / 100 : 0;
@@ -473,8 +492,8 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-white">Nová zakázka</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Přidat příjem za detailing</p>
+          <h1 className="text-xl font-bold text-white">{isEditing ? 'Upravit zakázku' : 'Nová zakázka'}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{isEditing ? `Zakázka #${String(initialOrder.orderNumber ?? '').padStart(4, '0')}` : 'Přidat příjem za detailing'}</p>
         </div>
         <button
           type="button"
@@ -776,7 +795,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
             disabled={submitting}
             className="w-full py-3 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-colors"
           >
-            {submitting ? 'Ukládání…' : 'Uložit zakázku'}
+            {submitting ? 'Ukládání…' : isEditing ? 'Uložit změny' : 'Uložit zakázku'}
           </button>
         </div>
       </form>
