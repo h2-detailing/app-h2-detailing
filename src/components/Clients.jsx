@@ -851,7 +851,7 @@ export default function Clients({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-white">{displayFormatted(client)}</span>
-                  {client.isCompany && (
+                  {!!client.isCompany && (
                     <span className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20">Firma</span>
                   )}
                   {client.vehicles.map((v) => (
