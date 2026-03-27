@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { LayoutDashboard, PlusCircle, Users, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import AddOrder from './components/AddOrder';
@@ -8,6 +9,39 @@ import Settings from './components/Settings';
 import Clients from './components/Clients';
 import Login from './components/Login';
 import { api } from './api/index';
+
+const BOTTOM_NAV = [
+  { id: 'dashboard', label: 'Přehled',   icon: LayoutDashboard },
+  { id: 'add-order', label: 'Zakázka',   icon: PlusCircle },
+  { id: 'clients',   label: 'Klienti',   icon: Users },
+  { id: 'history',   label: 'Transakce', icon: HistoryIcon },
+  { id: 'settings',  label: 'Nastavení', icon: SettingsIcon },
+];
+
+function MobileBottomNav({ currentView, onNavigate }) {
+  return (
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 flex safe-area-inset-bottom">
+      {BOTTOM_NAV.map(({ id, label, icon: Icon }) => {
+        const active = currentView === id;
+        const isPrimary = id === 'add-order';
+        return (
+          <button
+            key={id}
+            onClick={() => onNavigate(id)}
+            className={`flex-1 flex flex-col items-center justify-center pt-2 pb-3 gap-0.5 transition-colors ${
+              isPrimary
+                ? active ? 'text-orange-300' : 'text-orange-400'
+                : active ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-[9px] font-medium leading-none">{label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
 const DEFAULT_SETTINGS = { partner1: 'Patrik', partner2: 'Jirka', pausal: 1500, split: 50 };
 
@@ -193,7 +227,8 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
       <Sidebar currentView={view} onNavigate={setView} user={user} onLogout={handleLogout} />
-      <main className="flex-1 overflow-y-auto">{views[view] ?? views.dashboard}</main>
+      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">{views[view] ?? views.dashboard}</main>
+      <MobileBottomNav currentView={view} onNavigate={setView} />
     </div>
   );
 }

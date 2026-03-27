@@ -490,7 +490,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
     `flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${active ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'}`;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 lg:p-6 max-w-4xl mx-auto">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-6">

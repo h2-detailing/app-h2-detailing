@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ currentView, onNavigate, user, onLogout }) {
   return (
-    <aside className="w-60 flex-shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col">
+    <aside className="hidden lg:flex w-60 flex-shrink-0 bg-slate-900 border-r border-slate-800 flex-col">
       {/* Logo */}
       <div className="px-6 py-5 border-b border-slate-800">
         <div className="flex items-center gap-3">

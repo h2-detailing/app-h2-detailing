@@ -710,6 +710,51 @@ function OrderCalendar({ orders }) {
         <span className="text-sm font-semibold text-white capitalize">{monthName}</span>
       </div>
 
+      {/* ── Mobile: agenda list ── */}
+      {(() => {
+        const monthOrders = Object.entries(ordersByDate)
+          .filter(([d]) => d.startsWith(curMonthStr))
+          .sort(([a], [b]) => a.localeCompare(b));
+        return (
+          <div className="sm:hidden divide-y divide-slate-800/70">
+            {monthOrders.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-slate-600">Žádné zakázky tento měsíc</div>
+            ) : monthOrders.map(([dateStr, dayOrders]) => {
+              const isToday = dateStr === todayStr;
+              const dateLabel = new Date(dateStr + 'T12:00:00').toLocaleDateString('cs-CZ', {
+                weekday: 'short', day: 'numeric', month: 'short',
+              });
+              return (
+                <div key={dateStr} className="px-4 py-3">
+                  <div className={`text-xs font-semibold mb-2 ${isToday ? 'text-orange-400' : 'text-slate-500'}`}>
+                    {isToday ? `Dnes · ${dateLabel}` : dateLabel}
+                  </div>
+                  <div className="space-y-1.5">
+                    {dayOrders.map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedOrder(selectedOrder?.id === o.id ? null : o); }}
+                        className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg ${orderTypeColor(o.description).pill} hover:brightness-125 transition-all`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold truncate">{o.description || 'Zakázka'}</div>
+                          <div className="text-[10px] opacity-70 mt-0.5">{detectCategory(o.description)}</div>
+                        </div>
+                        <div className="text-xs font-bold text-orange-400 flex-shrink-0">{formatCzk(Number(o.price))}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* ── Desktop: week grid ── */}
+      <div className="hidden sm:block">
+
       {/* ── Day-of-week header ── */}
       <div className="grid grid-cols-7 border-b border-slate-800">
         {['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'].map((d, i) => (
@@ -783,6 +828,8 @@ function OrderCalendar({ orders }) {
           </div>
         ))}
       </div>
+
+      </div>{/* end desktop grid */}
 
       {/* ── Order detail popover ── */}
       {selectedOrder && (() => {
@@ -1086,7 +1133,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
   const hasAnyData = orders.length > 0 || expenses.length > 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-7">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-5 lg:space-y-7">
 
       {/* ── Header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1094,7 +1141,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
           <p className="text-sm text-slate-500 mt-0.5 capitalize">{periodLabel}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Period navigation (week / month / year) */}
           <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg px-1 py-1">
             <button
@@ -1103,7 +1150,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
                 else if (period === 'week') setWeekOffset(w => w - 1);
                 else setSelectedYear(y => y - 1);
               }}
-              className="p-1 text-slate-400 hover:text-white transition-colors rounded"
+              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded"
               title={period === 'month' ? 'Předchozí měsíc' : period === 'week' ? 'Předchozí týden' : 'Předchozí rok'}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1130,7 +1177,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
                 else setSelectedYear(y => y + 1);
               }}
               disabled={period === 'month' ? isCurrentMonth : period === 'week' ? isCurrentWeek : isCurrentYear}
-              className="p-1 text-slate-400 hover:text-white transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
               title={period === 'month' ? 'Následující měsíc' : period === 'week' ? 'Následující týden' : 'Následující rok'}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1144,7 +1191,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   period === p
                     ? 'bg-slate-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -1154,12 +1201,6 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
               </button>
             ))}
           </div>
-          <button
-            onClick={() => onNavigate('add-order')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            + Zakázka
-          </button>
           <button
             onClick={() => onNavigate('add-expense')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"

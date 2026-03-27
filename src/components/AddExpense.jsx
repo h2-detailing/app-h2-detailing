@@ -34,7 +34,7 @@ export default function AddExpense({ settings, onAdd, onCancel }) {
   };
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
+    <div className="p-4 lg:p-6 max-w-lg mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Nový náklad</h1>
         <p className="text-sm text-slate-500 mt-0.5">Přidat výdaj firmy</p>
