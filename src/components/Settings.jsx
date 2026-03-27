@@ -322,7 +322,10 @@ export default function Settings({ settings, onSave, onSavePrices, customPrices 
       <BackButton onClick={() => setSection(null)} label="Nastavení" />
       <div className="mb-5">
         <h2 className="text-lg font-bold text-white">Heslo</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{user ? `Přihlášen jako ${user.name}` : 'Změna hesla'}</p>
+        <p className="text-sm text-slate-500 mt-0.5">
+          Měníš heslo pro účet:{' '}
+          <span className="text-orange-400 font-semibold">{user?.name ?? '—'}</span>
+        </p>
       </div>
       <form onSubmit={handlePwSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
         <div>

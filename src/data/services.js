@@ -64,9 +64,9 @@ export const SERVICES = {
       },
     ],
     extras: [
-      { id: 'ext-sealant',      name: 'Ceramic sealant',              price: 500, unit: null },
-      { id: 'ext-sealant-kombi', name: 'Ceramic sealant — KOMBI příplatek', price: 300, unit: null },
-      { id: 'ext-sealant-suv',  name: 'Ceramic sealant — SUV příplatek',  price: 500, unit: null },
+      { id: 'ext-sealant',      name: 'Ceramic sealant',       price: 500, unit: null },
+      { id: 'ext-sealant-kombi', name: 'Ceramic sealant — KOMBI', price: 300, unit: null },
+      { id: 'ext-sealant-suv',  name: 'Ceramic sealant — SUV',  price: 500, unit: null },
     ],
   },
   upholstery: {

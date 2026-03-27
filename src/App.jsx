@@ -77,18 +77,20 @@ export default function App() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [ordersData, expensesData, clientsData, settingsData, pricesData] = await Promise.all([
+      const [ordersData, expensesData, clientsData, settingsData, pricesData, meData] = await Promise.all([
         api.getOrders(),
         api.getExpenses(),
         api.getClients(),
         api.getSettings(),
         api.getPrices(),
+        api.me(),
       ]);
       setOrders(ordersData);
       setExpenses(expensesData);
       setClients(clientsData);
       setSettings(settingsData);
       setCustomPrices(pricesData);
+      setUser(meData.user ?? meData);
     } catch (e) {
       if (e.message !== 'Unauthorized') console.error('Load error:', e);
     } finally {
