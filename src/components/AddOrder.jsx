@@ -36,7 +36,8 @@ function ServicePicker({ onApply, customPrices = {} }) {
 
   // Interior
   const [selectedPackage, setSelectedPackage] = useState('int-base');
-  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [selectedAddons, setSelectedAddons] = useState([]);        // non-vehicle package addons (e.g. Světlý interiér)
+  const [selectedVehicleAddons, setSelectedVehicleAddons] = useState([]); // KOMBI/SUV — shared across all packages
   const [extras, setExtras] = useState({});
   const [expandedPkg, setExpandedPkg] = useState(null);
 
@@ -50,7 +51,8 @@ function ServicePicker({ onApply, customPrices = {} }) {
   const [upholstery, setUpholstery] = useState({});
   const [upholsteryTab, setUpholsteryTab] = useState('fabric');
 
-  const toggleAddon    = (id) => setSelectedAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const toggleAddon        = (id) => setSelectedAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const toggleVehicleAddon = (id) => setSelectedVehicleAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleExtAddon = (id) => setSelectedExtAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleExtra    = (id) => setExtras((prev) => prev[id] ? (({ [id]: _, ...rest }) => rest)(prev) : { ...prev, [id]: 1 });
   const toggleExtExtra = (id) => setExtExtras((prev) => { const n = { ...prev }; n[id] ? delete n[id] : (n[id] = 1); return n; });
@@ -67,9 +69,15 @@ function ServicePicker({ onApply, customPrices = {} }) {
       if (pkg) {
         t += p(pkg.id, pkg.price);
         let pkgDesc = pkg.name;
-        const addonObjs = selectedAddons.map((aid) => pkg.addons?.find((a) => a.id === aid)).filter(Boolean);
-        addonObjs.forEach((a) => { t += p(a.id, a.price); });
-        if (addonObjs.length) pkgDesc += ' + ' + addonObjs.map((a) => a.name).join(', ');
+        // Non-vehicle package addons (e.g. Světlý interiér — only on Extra)
+        const pkgAddonObjs = selectedAddons.map((aid) => (pkg.addons ?? []).find((a) => a.id === aid && a.group !== 'vehicle')).filter(Boolean);
+        pkgAddonObjs.forEach((a) => { t += p(a.id, a.price); });
+        // Vehicle addons (KOMBI/SUV) — shared across all interior packages
+        const intVehicleAddons = SERVICES.interior.packages.flatMap((pk) => (pk.addons ?? []).filter((a) => a.group === 'vehicle')).filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i);
+        const vehicleAddonObjs = selectedVehicleAddons.map((vid) => intVehicleAddons.find((a) => a.id === vid)).filter(Boolean);
+        vehicleAddonObjs.forEach((a) => { t += p(a.id, a.price); });
+        const allAddonDescs = [...pkgAddonObjs, ...vehicleAddonObjs];
+        if (allAddonDescs.length) pkgDesc += ' + ' + allAddonDescs.map((a) => a.name).join(', ');
         parts.push(pkgDesc);
       }
     }
@@ -100,9 +108,9 @@ function ServicePicker({ onApply, customPrices = {} }) {
 
     return { total: t, serviceText: parts.join(', ') };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPackage, selectedAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
+  }, [selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
 
-  const hasSelection = !!selectedPackage || Object.keys(extras).length > 0 || !!selectedExtPackage || Object.keys(extExtras).length > 0 || Object.keys(upholstery).length > 0;
+  const hasSelection = !!selectedPackage || selectedVehicleAddons.length > 0 || Object.keys(extras).length > 0 || !!selectedExtPackage || Object.keys(extExtras).length > 0 || Object.keys(upholstery).length > 0;
   const sectionBtnCls = (key) => `px-3 py-1.5 rounded-md text-xs font-medium transition-all ${openSections[key] ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'text-slate-400 hover:text-white border border-transparent'}`;
   const subCls = (id, active) => `px-3 py-1 rounded text-xs font-medium transition-all ${active === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`;
 
@@ -149,22 +157,18 @@ function ServicePicker({ onApply, customPrices = {} }) {
                 );
               })}
             </div>
-            {/* Addons for selected package — shown below both cards */}
+            {/* Non-vehicle addons for selected package (e.g. Světlý interiér — only on Extra) */}
             {(() => {
               const pkg = SERVICES.interior.packages.find((pk) => pk.id === selectedPackage);
-              return pkg?.addons?.length > 0 ? (
+              const nonVehicle = (pkg?.addons ?? []).filter((a) => a.group !== 'vehicle');
+              return nonVehicle.length > 0 ? (
                 <div className="mt-2 border border-slate-700/40 rounded-lg px-3 pt-2 pb-3 space-y-1.5">
-                  {pkg.addons.map((addon, idx) => (
-                    <React.Fragment key={addon.id}>
-                      {addon.group === 'vehicle' && (idx === 0 || pkg.addons[idx-1]?.group !== 'vehicle') && (
-                        <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide pt-1">Typ vozidla</div>
-                      )}
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
-                        <span className="text-xs text-slate-300">{addon.name}</span>
-                        <span className="text-xs text-orange-400 ml-auto">+{formatCzk(p(addon.id, addon.price))}</span>
-                      </label>
-                    </React.Fragment>
+                  {nonVehicle.map((addon) => (
+                    <label key={addon.id} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
+                      <span className="text-xs text-slate-300">{addon.name}</span>
+                      <span className="text-xs text-orange-400 ml-auto">+{formatCzk(p(addon.id, addon.price))}</span>
+                    </label>
                   ))}
                 </div>
               ) : null;
@@ -194,6 +198,26 @@ function ServicePicker({ onApply, customPrices = {} }) {
               ))}
             </div>
           </div>
+          {/* KOMBI / SUV — available for any interior package */}
+          {selectedPackage !== '' && (() => {
+            const vehicleAddons = SERVICES.interior.packages
+              .flatMap((pk) => (pk.addons ?? []).filter((a) => a.group === 'vehicle'))
+              .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i);
+            return vehicleAddons.length > 0 ? (
+              <div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Typ vozidla</div>
+                <div className="space-y-2">
+                  {vehicleAddons.map((addon) => (
+                    <div key={addon.id} className="flex items-center gap-2">
+                      <input type="checkbox" checked={selectedVehicleAddons.includes(addon.id)} onChange={() => toggleVehicleAddon(addon.id)} className="accent-orange-500" />
+                      <span className="flex-1 text-sm text-slate-300">{addon.name}</span>
+                      <span className="text-xs text-slate-500 w-16 text-right">+{formatCzk(p(addon.id, addon.price))}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
       )}
 
@@ -286,7 +310,7 @@ function ServicePicker({ onApply, customPrices = {} }) {
         </div>
         <div className="flex gap-2">
           {hasSelection && (
-            <button type="button" onClick={() => { setSelectedPackage('int-base'); setSelectedAddons([]); setExtras({}); setSelectedExtPackage(openSections.exterior ? 'ext-wash' : ''); setSelectedExtAddons([]); setExtExtras({}); setUpholstery({}); }}
+            <button type="button" onClick={() => { setSelectedPackage('int-base'); setSelectedAddons([]); setSelectedVehicleAddons([]); setExtras({}); setSelectedExtPackage(openSections.exterior ? 'ext-wash' : ''); setSelectedExtAddons([]); setExtExtras({}); setUpholstery({}); }}
               className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
               Vymazat
             </button>
