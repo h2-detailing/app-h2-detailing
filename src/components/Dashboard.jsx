@@ -1382,7 +1382,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
             trendLabel={period === 'month' && d.revTrend !== null ? `vs. ${d.prevMonthLabel}` : period === 'year' && d.yearVsPrevYear !== null ? `vs. ${selectedYear - 1}` : null}
           />
           <StatCard
-            title={`Náklady · ${period === 'month' ? 'měsíc' : period === 'year' ? 'rok' : 'měsíc'}`}
+            title={`Náklady · ${period === 'month' ? 'měsíc' : period === 'year' ? 'rok' : 'týden'}`}
             value={formatCzk(d.displayedExpenses)}
             icon={TrendingDown}
             color="red"
@@ -1409,7 +1409,36 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
         </div>
       </section>
 
-      {/* ── TWO-COLUMN LAYOUT ─────────────────────────────────────── */}
+      {/* ── WEEK VIEW: full-width layout ──────────────────────────── */}
+      {period === 'week' && (
+        <div className="space-y-6">
+          <section>
+            <SectionLabel>Provoz</SectionLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MiniStat label="Zakázek" value={d.periodOrders.length} sub="tento týden" />
+              <UtilizationStat activeDays={d.activeDays} workDays={d.workDays} />
+              <MiniStat
+                label="Ø doba zakázky"
+                value={d.avgDuration ? `${d.avgDuration} h` : '—'}
+                sub={d.totalHours > 0 ? `${d.totalHours.toFixed(1)} h celkem` : 'nezadáno'}
+              />
+              <MiniStat
+                label="Tržba / hodina"
+                value={d.revPerHour ? formatCzk(d.revPerHour) : '—'}
+                sub={d.revPerHour ? 'klíč cenotvorby' : 'nezadáno'}
+                highlight
+              />
+            </div>
+          </section>
+          <section>
+            <SectionLabel>Kalendář týdne</SectionLabel>
+            <WeekCalendar orders={orders} weekStart={d.weekStart} weekEnd={d.weekEnd} />
+          </section>
+        </div>
+      )}
+
+      {/* ── MONTH / YEAR: two-column layout ───────────────────────── */}
+      {period !== 'week' && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ── LEFT col ─────────────────────────────────────────── */}
@@ -1422,7 +1451,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
               <MiniStat
                 label="Zakázek"
                 value={d.periodOrders.length}
-                sub={period === 'month' ? 'tento měsíc' : period === 'year' ? 'tento rok' : 'tento týden'}
+                sub={period === 'month' ? 'tento měsíc' : 'tento rok'}
               />
               <UtilizationStat activeDays={d.activeDays} workDays={d.workDays} />
               <MiniStat
@@ -1447,7 +1476,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
             </section>
           )}
 
-          {/* Top klienti – wide table (year only, placed under monthly chart) */}
+          {/* Top klienti – wide table (year only) */}
           {period === 'year' && (
             <section>
               <SectionLabel>Top klienti</SectionLabel>
@@ -1455,17 +1484,11 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
             </section>
           )}
 
-          {/* Kalendář zakázek (month + week only) */}
+          {/* Kalendář zakázek (month only) */}
           {period === 'month' && (
             <section>
               <SectionLabel>Kalendář zakázek</SectionLabel>
               <OrderCalendar orders={orders} />
-            </section>
-          )}
-          {period === 'week' && (
-            <section>
-              <SectionLabel>Týdenní přehled</SectionLabel>
-              <WeekCalendar orders={orders} weekStart={d.weekStart} weekEnd={d.weekEnd} />
             </section>
           )}
 
@@ -1481,21 +1504,21 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
         {/* ── RIGHT col ────────────────────────────────────────── */}
         <div className="space-y-6">
 
-          {/* Vyrovnání partnerů (month + week only) */}
-          {period !== 'year' && (
+          {/* Vyrovnání partnerů (month only) */}
+          {period === 'month' && (
             <section>
               <SectionLabel>Vyrovnání partnerů</SectionLabel>
               <CompactSettlement
-                orders={period === 'week' ? d.periodOrders : orders}
-                expenses={period === 'week' ? d.weekExpenses : expenses}
+                orders={orders}
+                expenses={expenses}
                 settings={settings}
-                selectedMonth={period === 'month' ? selectedMonth : ''}
+                selectedMonth={selectedMonth}
               />
             </section>
           )}
 
-          {/* Sezónní srovnání (month + week only) */}
-          {period !== 'year' && (
+          {/* Sezónní srovnání (month only) */}
+          {period === 'month' && (
             <section>
               <SectionLabel>Sezónní srovnání tržeb</SectionLabel>
               <SeasonalCard d={d} now={now} />
@@ -1518,8 +1541,8 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
             </section>
           )}
 
-          {/* Top klienti – compact (week / month only) */}
-          {period !== 'year' && (
+          {/* Top klienti – compact (month only) */}
+          {period === 'month' && (
             <section>
               <SectionLabel>Top klienti</SectionLabel>
               <TopClients topClients={d.topClients} />
@@ -1560,6 +1583,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
 
         </div>
       </div>
+      )}
     </div>
   );
 }
