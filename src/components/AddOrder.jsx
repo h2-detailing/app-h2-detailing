@@ -40,8 +40,23 @@ function ServicePicker({ onApply, customPrices = {} }) {
   const [expandedExtPkg, setExpandedExtPkg] = useState(null);
 
   // Upholstery
+  const [uphEnabled, setUphEnabled] = useState(false);
   const [upholstery, setUpholstery] = useState({});
   const [upholsteryTab, setUpholsteryTab] = useState('fabric');
+
+  // Panel header toggles
+  const handlePanelToggle = (key) => {
+    if (key === 'interior') {
+      if (selectedPackage === '') { setSelectedPackage('int-base'); }
+      else { setSelectedPackage(''); setSelectedAddons([]); setSelectedVehicleAddons([]); }
+    } else if (key === 'exterior') {
+      if (selectedExtPackage === '') { setSelectedExtPackage('ext-wash'); }
+      else { setSelectedExtPackage(''); setSelectedExtAddons([]); }
+    } else if (key === 'upholstery') {
+      if (uphEnabled) { setUphEnabled(false); setUpholstery({}); }
+      else { setUphEnabled(true); }
+    }
+  };
 
   const toggleAddon        = (id) => setSelectedAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const toggleVehicleAddon = (id) => setSelectedVehicleAddons((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -92,15 +107,33 @@ function ServicePicker({ onApply, customPrices = {} }) {
       if (extExtras[ex.id]) { extTotal += p(ex.id, ex.price); parts.push(ex.name); }
     });
 
-    [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
-      if (upholstery[item.id]) { uphTotal += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
-    });
+    if (uphEnabled) {
+      [...SERVICES.upholstery.fabric, ...SERVICES.upholstery.leather].forEach((item) => {
+        if (upholstery[item.id]) { uphTotal += p(item.id, item.price) * upholstery[item.id]; parts.push(upholstery[item.id] > 1 ? `${item.name} (${upholstery[item.id]}×)` : item.name); }
+      });
+    }
 
     return { total: intTotal + extTotal + uphTotal, serviceText: parts.join(', ') };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, upholstery, customPrices]);
+  }, [selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, uphEnabled, upholstery, customPrices]);
 
   const subCls = (id, active) => `px-3 py-1 rounded text-xs font-medium transition-all ${active === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`;
+
+  const isActive = {
+    interior: selectedPackage !== '',
+    exterior: selectedExtPackage !== '',
+    upholstery: uphEnabled,
+  };
+  const panelCls = (key) => `rounded-xl border transition-all ${isActive[key] ? 'border-orange-500/30 bg-orange-500/5' : 'border-slate-700/60 bg-slate-800/30'}`;
+  const PanelHeader = ({ sKey, label }) => (
+    <button type="button" onClick={() => handlePanelToggle(sKey)}
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-700/30 transition-colors">
+      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isActive[sKey] ? 'bg-orange-500 border-orange-500' : 'border-slate-600 bg-slate-800/60'}`}>
+        {isActive[sKey] && <Check className="w-2.5 h-2.5 text-white" />}
+      </div>
+      <span className={`text-sm font-semibold transition-colors ${isActive[sKey] ? 'text-white' : 'text-slate-400'}`}>{label}</span>
+    </button>
+  );
 
   return (
     <div className="space-y-3">
@@ -108,10 +141,8 @@ function ServicePicker({ onApply, customPrices = {} }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
         {/* ── INTERIÉR ── */}
-        <div className="rounded-xl border border-slate-700/60 bg-slate-800/30">
-          <div className="px-3 py-2.5 border-b border-slate-700/30">
-            <span className="text-sm font-semibold text-white">Interiér</span>
-          </div>
+        <div className={panelCls('interior')}>
+          <PanelHeader sKey="interior" label="Interiér" />
           <div className="px-3 pb-3 pt-3 space-y-4">
               <div>
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
@@ -202,10 +233,8 @@ function ServicePicker({ onApply, customPrices = {} }) {
         </div>
 
         {/* ── EXTERIÉR ── */}
-        <div className="rounded-xl border border-slate-700/60 bg-slate-800/30">
-          <div className="px-3 py-2.5 border-b border-slate-700/30">
-            <span className="text-sm font-semibold text-white">Exteriér</span>
-          </div>
+        <div className={panelCls('exterior')}>
+          <PanelHeader sKey="exterior" label="Exteriér" />
           <div className="px-3 pb-3 pt-3 space-y-4">
               <div>
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
@@ -272,10 +301,8 @@ function ServicePicker({ onApply, customPrices = {} }) {
         </div>
 
         {/* ── ČALOUNĚNÍ ── */}
-        <div className="rounded-xl border border-slate-700/60 bg-slate-800/30">
-          <div className="px-3 py-2.5 border-b border-slate-700/30">
-            <span className="text-sm font-semibold text-white">Čalounění</span>
-          </div>
+        <div className={panelCls('upholstery')}>
+          <PanelHeader sKey="upholstery" label="Čalounění" />
           <div className="px-3 pb-3 pt-3 space-y-3">
             <div className="flex gap-1">
               <button type="button" className={subCls('fabric', upholsteryTab)} onClick={() => setUpholsteryTab('fabric')}>Látka</button>
