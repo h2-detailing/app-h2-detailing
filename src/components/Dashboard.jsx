@@ -1202,6 +1202,12 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
             ))}
           </div>
           <button
+            onClick={() => onNavigate('add-order')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            + Zakázka
+          </button>
+          <button
             onClick={() => onNavigate('add-expense')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
           >
