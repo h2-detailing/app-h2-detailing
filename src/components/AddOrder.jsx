@@ -198,7 +198,6 @@ function ServicePicker({ onApply, customPrices = {} }) {
                   </div>
                 </div>
               )}
-            </div>
           </div>
         </div>
 
