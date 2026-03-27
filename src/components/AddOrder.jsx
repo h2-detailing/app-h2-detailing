@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Minus, ChevronRight, Check, Camera, X, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Minus, ChevronRight, Check, X, Search } from 'lucide-react';
 import { formatCzk } from '../utils/calculations';
 import { SERVICES } from '../data/services';
 
@@ -24,7 +24,8 @@ function Stepper({ value, onChange, onRemove }) {
 // ─── Service Picker ───────────────────────────────────────────────────────────
 
 function ServicePicker({ onApply }) {
-  const [tab, setTab] = useState('interior');
+  const [openSections, setOpenSections] = useState({ interior: true, exterior: false, upholstery: false });
+  const toggleSection = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
   const [selectedPackage, setSelectedPackage] = useState('');
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [extras, setExtras] = useState({});
@@ -61,18 +62,18 @@ function ServicePicker({ onApply }) {
   }, [selectedPackage, selectedAddons, extras, upholstery]);
 
   const hasSelection = !!selectedPackage || Object.keys(extras).length > 0 || Object.keys(upholstery).length > 0;
-  const tabCls = (id) => `px-3 py-1.5 rounded-md text-xs font-medium transition-all ${tab === id ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'text-slate-400 hover:text-white'}`;
+  const sectionBtnCls = (key) => `px-3 py-1.5 rounded-md text-xs font-medium transition-all ${openSections[key] ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'text-slate-400 hover:text-white border border-transparent'}`;
   const subCls = (id, active) => `px-3 py-1 rounded text-xs font-medium transition-all ${active === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`;
 
   return (
     <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-4">
       <div className="flex gap-1 bg-slate-900 rounded-lg p-1 w-fit">
-        <button type="button" className={tabCls('interior')}   onClick={() => setTab('interior')}>Interiér</button>
-        <button type="button" className={tabCls('exterior')}   onClick={() => setTab('exterior')}>Exteriér</button>
-        <button type="button" className={tabCls('upholstery')} onClick={() => setTab('upholstery')}>Čalounění</button>
+        <button type="button" className={sectionBtnCls('interior')}   onClick={() => toggleSection('interior')}>Interiér</button>
+        <button type="button" className={sectionBtnCls('exterior')}   onClick={() => toggleSection('exterior')}>Exteriér</button>
+        <button type="button" className={sectionBtnCls('upholstery')} onClick={() => toggleSection('upholstery')}>Čalounění</button>
       </div>
 
-      {tab === 'interior' && (
+      {openSections.interior && (
         <div className="space-y-4">
           <div>
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Balíček</div>
@@ -104,12 +105,17 @@ function ServicePicker({ onApply }) {
                   )}
                   {selectedPackage === pkg.id && pkg.addons?.length > 0 && (
                     <div className="px-4 pb-3 border-t border-slate-700/40 pt-2 space-y-1.5">
-                      {pkg.addons.map((addon) => (
-                        <label key={addon.id} className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
-                          <span className="text-xs text-slate-300">{addon.name}</span>
-                          <span className="text-xs text-orange-400 ml-auto">+{formatCzk(addon.price)}</span>
-                        </label>
+                      {pkg.addons.map((addon, idx) => (
+                        <React.Fragment key={addon.id}>
+                          {addon.group === 'vehicle' && (idx === 0 || pkg.addons[idx-1]?.group !== 'vehicle') && (
+                            <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide pt-1">Typ vozidla</div>
+                          )}
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={selectedAddons.includes(addon.id)} onChange={() => toggleAddon(addon.id)} className="accent-orange-500" />
+                            <span className="text-xs text-slate-300">{addon.name}</span>
+                            <span className="text-xs text-orange-400 ml-auto">+{formatCzk(addon.price)}</span>
+                          </label>
+                        </React.Fragment>
                       ))}
                     </div>
                   )}
@@ -139,13 +145,13 @@ function ServicePicker({ onApply }) {
         </div>
       )}
 
-      {tab === 'exterior' && (
+      {openSections.exterior && (
         <div className="text-center py-6 text-slate-600">
           <p className="text-sm">Ceník exteriéru bude brzy k dispozici.</p>
         </div>
       )}
 
-      {tab === 'upholstery' && (
+      {openSections.upholstery && (
         <div className="space-y-3">
           <div className="flex gap-1">
             <button type="button" className={subCls('fabric', upholsteryTab)} onClick={() => setUpholsteryTab('fabric')}>Látka</button>
@@ -184,33 +190,6 @@ function ServicePicker({ onApply }) {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Photo Input ──────────────────────────────────────────────────────────────
-
-function PhotoInput({ label, file, onChange }) {
-  return (
-    <div>
-      <div className="text-xs text-slate-500 mb-1">{label}</div>
-      <label className="block cursor-pointer">
-        {file ? (
-          <div className="relative group">
-            <img src={URL.createObjectURL(file)} alt={label} className="w-full h-28 object-cover rounded-lg" />
-            <button type="button" onClick={(e) => { e.preventDefault(); onChange(null); }}
-              className="absolute top-1 right-1 bg-slate-900/80 hover:bg-red-500 text-white rounded-full p-0.5 transition-colors opacity-0 group-hover:opacity-100">
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ) : (
-          <div className="w-full h-28 bg-slate-800 border border-slate-700 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-600 hover:border-orange-500/50 hover:text-slate-500 transition-colors gap-1.5">
-            <Camera className="w-5 h-5" />
-            <span className="text-xs">Přidat fotku</span>
-          </div>
-        )}
-        <input type="file" accept="image/*" className="hidden" onChange={(e) => onChange(e.target.files[0] || null)} />
-      </label>
     </div>
   );
 }
@@ -418,7 +397,6 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
     workers: [partner1, partner2],
     durationHours: '',
   });
-  const [photos, setPhotos] = useState({ before: null, after: null });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -478,7 +456,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
         durationHours: form.durationHours ? parseFloat(form.durationHours) : null,
         status: 'closed',
         splitOverride: splitOverrideEnabled ? customSplit : null,
-      }, photos);
+      });
     } catch (err) {
       setError(err.message || 'Chyba při ukládání.');
       setSubmitting(false);
@@ -785,15 +763,6 @@ export default function AddOrder({ settings, clients = [], onAdd, onAddClient, o
                 placeholder="Jakékoliv poznámky…"
                 className={inputCls + ' resize-none flex-1 min-h-[80px]'}
               />
-            </div>
-          </div>
-
-          {/* ROW 3 ── Fotky před/po (full width) */}
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <Label optional>Fotky před / po</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <PhotoInput label="Před" file={photos.before} onChange={(f) => setPhotos((p) => ({ ...p, before: f }))} />
-              <PhotoInput label="Po"   file={photos.after}  onChange={(f) => setPhotos((p) => ({ ...p, after: f }))} />
             </div>
           </div>
 

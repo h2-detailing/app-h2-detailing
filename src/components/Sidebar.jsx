@@ -6,6 +6,7 @@ import {
   History,
   Settings,
   Users,
+  Users2,
   LogOut,
 } from 'lucide-react';
 
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
   { id: 'add-order',   label: 'Nová zakázka', icon: PlusCircle },
   { id: 'add-expense', label: 'Nový náklad',  icon: MinusCircle },
   { id: 'clients',     label: 'Klienti',      icon: Users },
+  { id: 'partners',    label: 'Partneři',     icon: Users2 },
   { id: 'history',     label: 'Transakce',    icon: History },
   { id: 'settings',    label: 'Nastavení',    icon: Settings },
 ];

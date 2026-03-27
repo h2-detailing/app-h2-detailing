@@ -31,6 +31,8 @@ export const SERVICES = {
         ],
         addons: [
           { id: 'int-extra-light', name: 'Světlý interiér', price: 1500 },
+          { id: 'int-extra-kombi', name: 'KOMBI — příplatek', price: 300, group: 'vehicle' },
+          { id: 'int-extra-suv',   name: 'SUV — příplatek',  price: 500, group: 'vehicle' },
         ],
       },
     ],

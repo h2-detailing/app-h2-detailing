@@ -849,16 +849,22 @@ export default function Clients({
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-white">{displayFormatted(client)}</span>
-                  {!!client.isCompany && (
-                    <span className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20">Firma</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-white">{displayFormatted(client)}</span>
+                    {!!client.isCompany && (
+                      <span className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20">Firma</span>
+                    )}
+                  </div>
+                  {client.vehicles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {client.vehicles.map((v) => (
+                        <span key={v.id} className="text-xs bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full">
+                          {v.make} {v.model}{v.year ? ` '${String(v.year).slice(-2)}` : ''}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  {client.vehicles.map((v) => (
-                    <span key={v.id} className="text-xs bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full">
-                      {v.make} {v.model}{v.year ? ` '${String(v.year).slice(-2)}` : ''}
-                    </span>
-                  ))}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
                   {client.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{client.phone}</span>}

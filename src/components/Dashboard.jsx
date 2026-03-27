@@ -1141,78 +1141,82 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
           <p className="text-sm text-slate-500 mt-0.5 capitalize">{periodLabel}</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Period navigation (week / month / year) */}
-          <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg px-1 py-1">
-            <button
-              onClick={() => {
-                if (period === 'month') shiftMonth(-1);
-                else if (period === 'week') setWeekOffset(w => w - 1);
-                else setSelectedYear(y => y - 1);
-              }}
-              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded"
-              title={period === 'month' ? 'Předchozí měsíc' : period === 'week' ? 'Předchozí týden' : 'Předchozí rok'}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            {!(period === 'month' ? isCurrentMonth : period === 'week' ? isCurrentWeek : isCurrentYear) && (
+        <div className="flex flex-col gap-2 items-end lg:flex-row lg:items-center">
+          <div className="flex items-center gap-2">
+            {/* Period navigation (week / month / year) */}
+            <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg px-1 py-1">
               <button
                 onClick={() => {
-                  if (period === 'month') setSelectedMonth(todayMonthStr);
-                  else if (period === 'week') setWeekOffset(0);
-                  else setSelectedYear(todayYear);
+                  if (period === 'month') shiftMonth(-1);
+                  else if (period === 'week') setWeekOffset(w => w - 1);
+                  else setSelectedYear(y => y - 1);
                 }}
-                className="px-2 py-0.5 text-xs text-orange-400 hover:text-orange-300 font-medium transition-colors"
-                title="Přejít na aktuální období"
+                className="p-1.5 text-slate-400 hover:text-white transition-colors rounded"
+                title={period === 'month' ? 'Předchozí měsíc' : period === 'week' ? 'Předchozí týden' : 'Předchozí rok'}
               >
-                Dnes
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
-            )}
+              {!(period === 'month' ? isCurrentMonth : period === 'week' ? isCurrentWeek : isCurrentYear) && (
+                <button
+                  onClick={() => {
+                    if (period === 'month') setSelectedMonth(todayMonthStr);
+                    else if (period === 'week') setWeekOffset(0);
+                    else setSelectedYear(todayYear);
+                  }}
+                  className="px-2 py-0.5 text-xs text-orange-400 hover:text-orange-300 font-medium transition-colors"
+                  title="Přejít na aktuální období"
+                >
+                  Dnes
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (period === 'month') shiftMonth(1);
+                  else if (period === 'week') setWeekOffset(w => w + 1);
+                  else setSelectedYear(y => y + 1);
+                }}
+                disabled={period === 'month' ? isCurrentMonth : period === 'week' ? isCurrentWeek : isCurrentYear}
+                className="p-1.5 text-slate-400 hover:text-white transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                title={period === 'month' ? 'Následující měsíc' : period === 'week' ? 'Následující týden' : 'Následující rok'}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            {/* Period toggle */}
+            <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-1 gap-1">
+              {['week', 'month', 'year'].map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    period === p
+                      ? 'bg-slate-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {p === 'week' ? 'Týden' : p === 'month' ? 'Měsíc' : 'Rok'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2">
             <button
-              onClick={() => {
-                if (period === 'month') shiftMonth(1);
-                else if (period === 'week') setWeekOffset(w => w + 1);
-                else setSelectedYear(y => y + 1);
-              }}
-              disabled={period === 'month' ? isCurrentMonth : period === 'week' ? isCurrentWeek : isCurrentYear}
-              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
-              title={period === 'month' ? 'Následující měsíc' : period === 'week' ? 'Následující týden' : 'Následující rok'}
+              onClick={() => onNavigate('add-order')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
+              + Zakázka
+            </button>
+            <button
+              onClick={() => onNavigate('add-expense')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              + Náklad
             </button>
           </div>
-          {/* Period toggle */}
-          <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-1 gap-1">
-            {['week', 'month', 'year'].map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  period === p
-                    ? 'bg-slate-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {p === 'week' ? 'Týden' : p === 'month' ? 'Měsíc' : 'Rok'}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => onNavigate('add-order')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            + Zakázka
-          </button>
-          <button
-            onClick={() => onNavigate('add-expense')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            + Náklad
-          </button>
         </div>
       </div>
 

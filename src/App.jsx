@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, PlusCircle, Users, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, MinusCircle, Users, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import AddOrder from './components/AddOrder';
@@ -7,15 +7,17 @@ import AddExpense from './components/AddExpense';
 import History from './components/History';
 import Settings from './components/Settings';
 import Clients from './components/Clients';
+import Partners from './components/Partners';
 import Login from './components/Login';
 import { api } from './api/index';
 
 const BOTTOM_NAV = [
-  { id: 'dashboard', label: 'Přehled',   icon: LayoutDashboard },
-  { id: 'add-order', label: 'Zakázka',   icon: PlusCircle },
-  { id: 'clients',   label: 'Klienti',   icon: Users },
-  { id: 'history',   label: 'Transakce', icon: HistoryIcon },
-  { id: 'settings',  label: 'Nastavení', icon: SettingsIcon },
+  { id: 'dashboard',   label: 'Přehled',   icon: LayoutDashboard },
+  { id: 'add-order',   label: 'Zakázka',   icon: PlusCircle },
+  { id: 'add-expense', label: 'Náklad',    icon: MinusCircle },
+  { id: 'clients',     label: 'Klienti',   icon: Users },
+  { id: 'history',     label: 'Transakce', icon: HistoryIcon },
+  { id: 'settings',    label: 'Nastavení', icon: SettingsIcon },
 ];
 
 function MobileBottomNav({ currentView, onNavigate }) {
@@ -131,10 +133,8 @@ export default function App() {
       <AddOrder
         settings={settings}
         clients={clients}
-        onAdd={async (orderData, photos) => {
-          const created = await api.createOrder(orderData);
-          if (photos?.before) await api.uploadPhoto(created.id, photos.before, 'before');
-          if (photos?.after)  await api.uploadPhoto(created.id, photos.after,  'after');
+        onAdd={async (orderData) => {
+          await api.createOrder(orderData);
           setOrders(await api.getOrders());
           setView('dashboard');
         }}
@@ -220,6 +220,13 @@ export default function App() {
           const saved = await api.updateSettings(updated);
           setSettings(saved);
         }}
+      />
+    ),
+    partners: (
+      <Partners
+        orders={orders}
+        expenses={expenses}
+        settings={settings}
       />
     ),
   };
