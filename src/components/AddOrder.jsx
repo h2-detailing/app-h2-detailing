@@ -26,7 +26,13 @@ function Stepper({ value, onChange, onRemove }) {
 function ServicePicker({ onApply, customPrices = {} }) {
   const p = (id, def) => customPrices[id] ?? def;
   const [openSections, setOpenSections] = useState({ interior: true, exterior: false, upholstery: false });
-  const toggleSection = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
+  const toggleSection = (key) => {
+    setOpenSections(s => {
+      const opening = !s[key];
+      if (key === 'exterior' && opening && selectedExtPackage === '') setSelectedExtPackage('ext-wash');
+      return { ...s, [key]: opening };
+    });
+  };
 
   // Interior
   const [selectedPackage, setSelectedPackage] = useState('int-base');
@@ -35,7 +41,7 @@ function ServicePicker({ onApply, customPrices = {} }) {
   const [expandedPkg, setExpandedPkg] = useState(null);
 
   // Exterior
-  const [selectedExtPackage, setSelectedExtPackage] = useState('ext-wash');
+  const [selectedExtPackage, setSelectedExtPackage] = useState('');
   const [selectedExtAddons, setSelectedExtAddons] = useState([]);
   const [extExtras, setExtExtras] = useState({});
   const [expandedExtPkg, setExpandedExtPkg] = useState(null);
@@ -280,7 +286,7 @@ function ServicePicker({ onApply, customPrices = {} }) {
         </div>
         <div className="flex gap-2">
           {hasSelection && (
-            <button type="button" onClick={() => { setSelectedPackage('int-base'); setSelectedAddons([]); setExtras({}); setSelectedExtPackage('ext-wash'); setSelectedExtAddons([]); setExtExtras({}); setUpholstery({}); }}
+            <button type="button" onClick={() => { setSelectedPackage('int-base'); setSelectedAddons([]); setExtras({}); setSelectedExtPackage(openSections.exterior ? 'ext-wash' : ''); setSelectedExtAddons([]); setExtExtras({}); setUpholstery({}); }}
               className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
               Vymazat
             </button>
