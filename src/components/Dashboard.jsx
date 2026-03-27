@@ -402,15 +402,17 @@ function CompactSettlement({ orders, expenses, settings }) {
       : expenses;
 
     // Pausal: 1× per month for monthly view; proportional to months present otherwise
+    const pausalNum = Number(pausal) || 0;
+    const splitNum  = Number(split)  || 50;
     let pausálTotal;
     if (selectedMonth) {
-      pausálTotal = pausal;
+      pausálTotal = pausalNum;
     } else {
       const allMonths = new Set([
         ...orders.map(o => o.date.slice(0, 7)),
         ...expenses.map(e => e.date.slice(0, 7)),
       ]);
-      pausálTotal = allMonths.size * pausal;
+      pausálTotal = allMonths.size * pausalNum;
     }
 
     const totalRev    = filtO.reduce((sum, o) => sum + Number(o.price), 0);
@@ -418,12 +420,12 @@ function CompactSettlement({ orders, expenses, settings }) {
     const totalExp    = totalExpRaw + pausálTotal;
     // Per-order split: use splitOverride if present, else global split
     const p1Revenue = filtO.reduce((sum, o) => {
-      const s = (o.splitOverride != null) ? Number(o.splitOverride) : split;
+      const s = (o.splitOverride != null) ? Number(o.splitOverride) : splitNum;
       return sum + Number(o.price) * s / 100;
     }, 0);
     const p2Revenue = totalRev - p1Revenue;
-    const p1Profit  = p1Revenue - totalExp * (split / 100);
-    const p2Profit  = p2Revenue - totalExp * ((100 - split) / 100);
+    const p1Profit  = p1Revenue - totalExp * (splitNum / 100);
+    const p2Profit  = p2Revenue - totalExp * ((100 - splitNum) / 100);
     const p1Paid      = filtE.filter(e => e.payer === partner1).reduce((sum, e) => sum + Number(e.amount), 0);
     const p2Paid      = filtE.filter(e => e.payer === partner2).reduce((sum, e) => sum + Number(e.amount), 0) + pausálTotal;
     const fairShare   = (p1Paid + p2Paid) / 2;
@@ -823,33 +825,61 @@ function OrderCalendar({ orders }) {
 // ─── Yearly sub-components ───────────────────────────────────────────────────
 
 function MonthlyRevenueChart({ monthlyBreakdown, selectedYear }) {
-  const maxRev = Math.max(...monthlyBreakdown.map(m => m.revenue), 1);
+  const maxVal = Math.max(...monthlyBreakdown.map(m => Math.max(m.revenue, m.expenses)), 1);
   const now = new Date();
   const todayYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
+  const H = 96;
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-      <div className="flex items-end gap-1.5 h-28">
+      <div className="flex items-end gap-1" style={{ height: `${H + 16}px` }}>
         {monthlyBreakdown.map(m => {
-          const pct = Math.round((m.revenue / maxRev) * 100);
+          const profit = m.revenue - m.expenses;
           const isCurrent = selectedYear === todayYear && m.month === currentMonth;
-          const isFuture = selectedYear === todayYear && m.month > currentMonth;
+          const isFuture  = selectedYear === todayYear && m.month > currentMonth;
+          const revPct  = Math.max(Math.round((m.revenue  / maxVal) * 100), m.revenue  > 0 ? 2 : 0);
+          const expPct  = Math.max(Math.round((m.expenses / maxVal) * 100), m.expenses > 0 ? 1 : 0);
+          const profPct = Math.max(Math.round((Math.max(profit, 0) / maxVal) * 100), profit > 0 ? 2 : 0);
+
           return (
-            <div key={m.month} className="flex-1 flex flex-col items-center gap-1 group relative">
-              {m.revenue > 0 && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-700 text-white text-xs px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                  {formatCzk(m.revenue)}
+            <div key={m.month} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+              {/* Tooltip */}
+              {!isFuture && m.revenue > 0 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-700 border border-slate-600 text-xs px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none space-y-0.5">
+                  <div className="text-orange-400">↑ {formatCzk(m.revenue)}</div>
+                  <div className="text-red-400">↓ {formatCzk(m.expenses)}</div>
+                  <div className={`font-semibold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>= {formatCzk(profit)}</div>
                 </div>
               )}
-              <div className="w-full flex items-end" style={{ height: '80px' }}>
-                <div
-                  className={`w-full rounded-t transition-all duration-500 ${
-                    isFuture ? 'bg-slate-800' :
-                    isCurrent ? 'bg-orange-500' :
-                    'bg-slate-600 group-hover:bg-slate-500'
-                  }`}
-                  style={{ height: isFuture ? '4px' : `${Math.max(pct, m.revenue > 0 ? 4 : 0)}%` }}
-                />
+              <div className="w-full relative" style={{ height: `${H}px` }}>
+                {isFuture ? (
+                  <div className="absolute bottom-0 left-0 right-0 rounded-t bg-slate-800" style={{ height: '3px' }} />
+                ) : (
+                  <>
+                    {/* Revenue background bar (subtle) */}
+                    {m.revenue > 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 rounded-t bg-orange-500/10 border-t border-orange-500/25"
+                        style={{ height: `${revPct}%` }} />
+                    )}
+                    {/* Expenses dashed line */}
+                    {m.expenses > 0 && (
+                      <div className="absolute left-0 right-0"
+                        style={{ bottom: `${expPct}%`, borderTop: '1px dashed rgba(248,113,113,0.45)' }} />
+                    )}
+                    {/* Profit bar (primary) */}
+                    <div
+                      className={`absolute bottom-0 left-0.5 right-0.5 rounded-t transition-all duration-500 ${
+                        profit < 0 ? 'bg-red-500/80' :
+                        isCurrent ? 'bg-emerald-500' :
+                        'bg-emerald-700 group-hover:bg-emerald-600'
+                      }`}
+                      style={{ height: profit < 0
+                        ? `${Math.max(Math.round((Math.abs(profit) / maxVal) * 100), 2)}%`
+                        : `${profPct}%` }}
+                    />
+                  </>
+                )}
               </div>
               <span className={`text-xs ${isCurrent ? 'text-orange-400 font-semibold' : 'text-slate-600'}`}>
                 {m.label}
@@ -857,6 +887,18 @@ function MonthlyRevenueChart({ monthlyBreakdown, selectedYear }) {
             </div>
           );
         })}
+      </div>
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-2 pt-2 border-t border-slate-800">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="w-3 h-2.5 bg-emerald-700 rounded-sm flex-shrink-0" />Zisk
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="w-3 h-2.5 bg-orange-500/20 border border-orange-500/30 rounded-sm flex-shrink-0" />Tržby
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="w-3 flex-shrink-0" style={{ borderTop: '1px dashed rgba(248,113,113,0.5)' }} />Náklady
+        </div>
       </div>
     </div>
   );
@@ -1120,7 +1162,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           </button>
           <button
             onClick={() => onNavigate('add-expense')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg border border-slate-600 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors"
           >
             + Náklad
           </button>
@@ -1200,7 +1242,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           {/* Měsíční přehled tržeb (year only) */}
           {period === 'year' && d.monthlyBreakdown && (
             <section>
-              <SectionLabel>Tržby měsíc po měsíci</SectionLabel>
+              <SectionLabel>Zisk měsíc po měsíci</SectionLabel>
               <MonthlyRevenueChart monthlyBreakdown={d.monthlyBreakdown} selectedYear={selectedYear} />
             </section>
           )}

@@ -534,6 +534,7 @@ export default function Clients({
   const [vehicleSubError,   setVehicleSubError]    = useState('');
   const [search,         setSearch]          = useState('');
   const [filterMake,     setFilterMake]      = useState('');
+  const [filterType,     setFilterType]      = useState('all'); // 'all' | 'person' | 'company'
 
   // Unique car makes for filter
   const allMakes = useMemo(() => {
@@ -559,14 +560,16 @@ export default function Clients({
         );
         const matchesMake = !filterMake ||
           c.vehicles.some((v) => v.make === filterMake);
-        return matchesSearch && matchesMake;
+        const matchesType = filterType === 'all' ||
+          (filterType === 'company' ? !!c.isCompany : !c.isCompany);
+        return matchesSearch && matchesMake && matchesType;
       })
       .sort((a, b) => {
         const lastA = a.name.trim().split(' ').pop() || '';
         const lastB = b.name.trim().split(' ').pop() || '';
         return lastA.localeCompare(lastB, 'cs');
       });
-  }, [clients, search, filterMake]);
+  }, [clients, search, filterMake, filterType]);
 
   const handleAddVehicleToNew = () => {
     if (!vehicleSubForm.make.trim())
@@ -760,31 +763,52 @@ export default function Clients({
 
       {/* ── Search & Filter ── */}
       {clients.length > 0 && (
-        <div className="flex gap-3 mb-5">
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Hledat klienta, vozidlo, SPZ…"
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-orange-500 transition-colors"
-            />
-          </div>
-          {allMakes.length > 0 && (
-            <div className="relative">
-              <SlidersHorizontal className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                value={filterMake}
-                onChange={(e) => setFilterMake(e.target.value)}
-                className="appearance-none bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-8 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors cursor-pointer"
-              >
-                <option value="">Všechny značky</option>
-                {allMakes.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="space-y-3 mb-5">
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Hledat klienta, vozidlo, SPZ…"
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-orange-500 transition-colors"
+              />
             </div>
-          )}
+            {allMakes.length > 0 && (
+              <div className="relative">
+                <SlidersHorizontal className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <select
+                  value={filterMake}
+                  onChange={(e) => setFilterMake(e.target.value)}
+                  className="appearance-none bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-8 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors cursor-pointer"
+                >
+                  <option value="">Všechny značky</option>
+                  {allMakes.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {[
+              { key: 'all',     label: 'Vše' },
+              { key: 'person',  label: 'Fyzické osoby' },
+              { key: 'company', label: 'Firmy' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilterType(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  filterType === key
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

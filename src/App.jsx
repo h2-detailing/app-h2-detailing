@@ -104,6 +104,11 @@ export default function App() {
           setOrders(await api.getOrders());
           setView('dashboard');
         }}
+        onAddClient={async (data) => {
+          const created = await api.createClient(data);
+          setClients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+          return created;
+        }}
         onCancel={() => setView('dashboard')}
       />
     ),

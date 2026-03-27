@@ -224,9 +224,14 @@ function clientDisplayName(c) {
   return c.name;
 }
 
-function ClientCombobox({ clients, value, onChange, inputCls }) {
+function ClientCombobox({ clients, value, onChange, onAddClient, inputCls }) {
   const [query, setQuery] = useState('');
   const [open, setOpen]   = useState(false);
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName]     = useState('');
+  const [newPhone, setNewPhone]   = useState('');
+  const [saving, setSaving]       = useState(false);
+  const [addError, setAddError]   = useState('');
   const ref = useRef(null);
 
   const selected = clients.find((c) => c.id === value) ?? null;
@@ -249,6 +254,23 @@ function ClientCombobox({ clients, value, onChange, inputCls }) {
 
   const select = (client) => { onChange(client?.id ?? ''); setQuery(''); setOpen(false); };
 
+  const handleAddNew = async () => {
+    if (!newName.trim()) { setAddError('Jméno je povinné.'); return; }
+    setSaving(true);
+    setAddError('');
+    try {
+      const created = await onAddClient({ name: newName.trim(), phone: newPhone.trim(), companyName: '', displayAs: 'name', email: '', note: '', isCompany: false, ico: '', dic: '', billingAddress: '' });
+      select(created);
+      setAddingNew(false);
+      setNewName('');
+      setNewPhone('');
+    } catch {
+      setAddError('Nepodařilo se přidat klienta.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ── Selected state: show chip with clear button ──
   if (selected) {
     return (
@@ -262,6 +284,48 @@ function ClientCombobox({ clients, value, onChange, inputCls }) {
         >
           <X className="w-3.5 h-3.5" />
         </button>
+      </div>
+    );
+  }
+
+  // ── Inline new client form ──
+  if (addingNew) {
+    return (
+      <div className="bg-slate-800 border border-orange-500/40 rounded-lg p-3 space-y-2">
+        <div className="text-xs font-semibold text-orange-400 mb-1">Nový klient</div>
+        <input
+          autoFocus
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="Jméno a příjmení *"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-orange-500 transition-colors"
+        />
+        <input
+          type="text"
+          value={newPhone}
+          onChange={(e) => setNewPhone(e.target.value)}
+          placeholder="Telefon (volitelné)"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-orange-500 transition-colors"
+        />
+        {addError && <p className="text-xs text-red-400">{addError}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleAddNew}
+            disabled={saving}
+            className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-semibold rounded-lg px-3 py-2 transition-colors"
+          >
+            {saving ? 'Ukládám…' : 'Přidat klienta'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setAddingNew(false); setNewName(''); setNewPhone(''); setAddError(''); }}
+            className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold rounded-lg px-3 py-2 transition-colors"
+          >
+            Zrušit
+          </button>
+        </div>
       </div>
     );
   }
@@ -313,6 +377,18 @@ function ClientCombobox({ clients, value, onChange, inputCls }) {
               ))
             )}
           </div>
+
+          {/* Add new client */}
+          {onAddClient && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setAddingNew(true); }}
+              className="w-full px-3 py-2.5 text-left text-sm text-orange-400 hover:bg-slate-700/60 transition-colors border-t border-slate-700/60 flex items-center gap-2"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Přidat klienta
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -332,7 +408,7 @@ function Label({ children, optional }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AddOrder({ settings, clients = [], onAdd, onCancel }) {
+export default function AddOrder({ settings, clients = [], onAdd, onAddClient, onCancel }) {
   const { partner1, partner2, split } = settings;
 
   const [form, setForm] = useState({
@@ -444,6 +520,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onCancel }) {
               clients={clients}
               value={selectedClientId}
               onChange={(id) => { setSelectedClientId(id); setSelectedVehicleId(''); }}
+              onAddClient={onAddClient}
               inputCls={inputCls}
             />
             {selectedClient && (
@@ -569,7 +646,7 @@ export default function AddOrder({ settings, clients = [], onAdd, onCancel }) {
                   <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${tipEnabled ? 'border-green-400 bg-green-400/20' : 'border-slate-600'}`}>
                     {tipEnabled && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
                   </span>
-                  Dostali dýško
+                  Spropitné
                 </button>
 
                 {tipEnabled && (
