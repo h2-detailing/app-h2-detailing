@@ -374,23 +374,8 @@ function UtilizationStat({ activeDays, workDays }) {
   );
 }
 
-function CompactSettlement({ orders, expenses, settings }) {
+function CompactSettlement({ orders, expenses, settings, selectedMonth }) {
   const { partner1, partner2, pausal, split } = settings;
-
-  // Available months (newest first)
-  const availableMonths = useMemo(() => {
-    const m = new Set([
-      ...orders.map(o => o.date.slice(0, 7)),
-      ...expenses.map(e => e.date.slice(0, 7)),
-    ]);
-    return [...m].sort().reverse();
-  }, [orders, expenses]);
-
-  // Default to current month if it has data, otherwise show all-time
-  const nowStr = monthStr(new Date().getFullYear(), new Date().getMonth() + 1);
-  const [selectedMonth, setSelectedMonth] = useState(
-    availableMonths.includes(nowStr) ? nowStr : ''
-  );
 
   // Recompute whenever month selection changes
   const s = useMemo(() => {
@@ -438,40 +423,6 @@ function CompactSettlement({ orders, expenses, settings }) {
 
   return (
     <div className="space-y-3">
-      {/* Month chips */}
-      {availableMonths.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setSelectedMonth('')}
-            className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-              !selectedMonth
-                ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
-                : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Celkem
-          </button>
-          {availableMonths.map(m => {
-            const [y, mo] = m.split('-');
-            const label = cap(new Date(Number(y), parseInt(mo) - 1)
-              .toLocaleDateString('cs-CZ', { month: 'short', year: '2-digit' }));
-            return (
-              <button
-                key={m}
-                onClick={() => setSelectedMonth(m === selectedMonth ? '' : m)}
-                className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-                  m === selectedMonth
-                    ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
-                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Settlement card */}
       <div className={`rounded-xl p-4 border ${settled ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
         {/* Profit share */}
@@ -495,7 +446,7 @@ function CompactSettlement({ orders, expenses, settings }) {
             <span className="text-white font-medium">{formatCzk(s.p1Paid)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-400">{partner2} zaplatil (vč. paušálu)</span>
+            <span className="text-slate-400">{partner2} zaplatil</span>
             <span className="text-white font-medium">{formatCzk(s.p2Paid)}</span>
           </div>
           <div className="flex justify-between text-slate-600">
@@ -1330,7 +1281,7 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
           {period !== 'year' && (
             <section>
               <SectionLabel>Vyrovnání partnerů</SectionLabel>
-              <CompactSettlement orders={orders} expenses={expenses} settings={settings} />
+              <CompactSettlement orders={orders} expenses={expenses} settings={settings} selectedMonth={period === 'month' ? selectedMonth : ''} />
             </section>
           )}
 

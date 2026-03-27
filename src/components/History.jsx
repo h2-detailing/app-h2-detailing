@@ -120,45 +120,32 @@ const catStyle = (c) => (CAT[c] || CAT['Ostatní']).bg;
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 function MonthChipFilter({ value, onChange, months }) {
-  const monthNames = ['Led', 'Úno', 'Bře', 'Dub', 'Kvě', 'Čvn', 'Čvc', 'Srp', 'Zář', 'Říj', 'Lis', 'Pro'];
+  const monthNames = [
+    'Leden','Únor','Březen','Duben','Květen','Červen',
+    'Červenec','Srpen','Září','Říjen','Listopad','Prosinec',
+  ];
 
   if (months.length === 0) return null;
 
-  // Sort available months Jan→Dec (by month number, then year)
-  const sorted = [...months].sort((a, b) => {
-    const moA = parseInt(a.slice(5));
-    const moB = parseInt(b.slice(5));
-    return moA !== moB ? moA - moB : a.localeCompare(b);
-  });
-
-  // If data spans multiple years, append 2-digit year to disambiguate
-  const years = new Set(months.map(m => m.slice(0, 4)));
-  const multi = years.size > 1;
-
-  const chip = (active) =>
-    `px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-      active
-        ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
-        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
-    }`;
+  const sorted = [...months].sort((a, b) => b.localeCompare(a)); // newest first
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button onClick={() => onChange('')} className={chip(!value)}>Vše</button>
-      {sorted.map(m => {
-        const mo  = parseInt(m.slice(5)) - 1;
-        const yr  = m.slice(2, 4);
-        const label = multi ? `${monthNames[mo]} ${yr}` : monthNames[mo];
-        return (
-          <button
-            key={m}
-            onClick={() => onChange(value === m ? '' : m)}
-            className={chip(value === m)}
-          >
-            {label}
-          </button>
-        );
-      })}
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none bg-slate-900 border border-slate-800 rounded-lg pl-3 pr-8 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors cursor-pointer"
+      >
+        <option value="">Všechny měsíce</option>
+        {sorted.map(m => {
+          const mo = parseInt(m.slice(5)) - 1;
+          const yr = m.slice(0, 4);
+          return (
+            <option key={m} value={m}>{monthNames[mo]} {yr}</option>
+          );
+        })}
+      </select>
+      <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
     </div>
   );
 }
