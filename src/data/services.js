@@ -46,7 +46,28 @@ export const SERVICES = {
   },
   exterior: {
     label: 'Exteriér',
-    comingSoon: true,
+    packages: [
+      {
+        id: 'ext-wash',
+        name: 'Exteriér',
+        price: 990,
+        includes: [
+          'Ruční mytí',
+          'Mytí s aktivní pěnou',
+          'Odstranění hmyzu',
+          'Mytí kol a podběhů',
+        ],
+        addons: [
+          { id: 'ext-wash-kombi', name: 'KOMBI — příplatek', price: 300, group: 'vehicle' },
+          { id: 'ext-wash-suv',   name: 'SUV — příplatek',  price: 500, group: 'vehicle' },
+        ],
+      },
+    ],
+    extras: [
+      { id: 'ext-sealant',      name: 'Ceramic sealant',              price: 500, unit: null },
+      { id: 'ext-sealant-kombi', name: 'Ceramic sealant — KOMBI příplatek', price: 300, unit: null },
+      { id: 'ext-sealant-suv',  name: 'Ceramic sealant — SUV příplatek',  price: 500, unit: null },
+    ],
   },
   upholstery: {
     label: 'Čalounění',
@@ -72,30 +93,66 @@ export const SERVICES = {
   },
 };
 
-// Returns a flat grouped list of all priceable items for the Settings price editor
-export function getAllPriceItems() {
+// 3-column structure for the Settings price editor
+export function getPriceColumns() {
   return [
     {
-      group: 'Interiér — balíčky',
-      items: SERVICES.interior.packages.map((p) => ({ id: p.id, name: p.name, defaultPrice: p.price })),
+      column: 'Interiér',
+      groups: [
+        {
+          group: 'Balíčky',
+          items: SERVICES.interior.packages.map((p) => ({ id: p.id, name: p.name, defaultPrice: p.price })),
+        },
+        {
+          group: 'Příplatky',
+          items: SERVICES.interior.packages.flatMap((p) =>
+            (p.addons ?? []).map((a) => ({ id: a.id, name: `${p.name}: ${a.name}`, defaultPrice: a.price }))
+          ),
+        },
+        {
+          group: 'Extra služby',
+          items: SERVICES.interior.extras.map((e) => ({ id: e.id, name: e.name, defaultPrice: e.price, unit: e.unit })),
+        },
+      ],
     },
     {
-      group: 'Interiér — příplatky',
-      items: SERVICES.interior.packages.flatMap((p) =>
-        (p.addons ?? []).map((a) => ({ id: a.id, name: `${p.name}: ${a.name}`, defaultPrice: a.price }))
-      ),
+      column: 'Exteriér',
+      groups: [
+        {
+          group: 'Balíčky',
+          items: SERVICES.exterior.packages.map((p) => ({ id: p.id, name: p.name, defaultPrice: p.price })),
+        },
+        {
+          group: 'Příplatky',
+          items: SERVICES.exterior.packages.flatMap((p) =>
+            (p.addons ?? []).map((a) => ({ id: a.id, name: `${p.name}: ${a.name}`, defaultPrice: a.price }))
+          ),
+        },
+        {
+          group: 'Extra služby',
+          items: SERVICES.exterior.extras.map((e) => ({ id: e.id, name: e.name, defaultPrice: e.price })),
+        },
+      ],
     },
     {
-      group: 'Interiér — extra služby',
-      items: SERVICES.interior.extras.map((e) => ({ id: e.id, name: e.name, defaultPrice: e.price, unit: e.unit })),
-    },
-    {
-      group: 'Čalounění — textil',
-      items: SERVICES.upholstery.fabric.map((i) => ({ id: i.id, name: i.name, defaultPrice: i.price })),
-    },
-    {
-      group: 'Čalounění — kůže',
-      items: SERVICES.upholstery.leather.map((i) => ({ id: i.id, name: i.name, defaultPrice: i.price })),
+      column: 'Čalounění',
+      groups: [
+        {
+          group: 'Textil',
+          items: SERVICES.upholstery.fabric.map((i) => ({ id: i.id, name: i.name, defaultPrice: i.price })),
+        },
+        {
+          group: 'Kůže',
+          items: SERVICES.upholstery.leather.map((i) => ({ id: i.id, name: i.name, defaultPrice: i.price })),
+        },
+      ],
     },
   ];
+}
+
+// Flat list used for initialising price state (all items across all columns)
+export function getAllPriceItems() {
+  return getPriceColumns().flatMap((col) =>
+    col.groups.flatMap((g) => g.items)
+  );
 }
