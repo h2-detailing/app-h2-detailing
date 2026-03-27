@@ -31,8 +31,8 @@ export const SERVICES = {
         ],
         addons: [
           { id: 'int-extra-light', name: 'Světlý interiér', price: 1500 },
-          { id: 'int-extra-kombi', name: 'KOMBI — příplatek', price: 300, group: 'vehicle' },
-          { id: 'int-extra-suv',   name: 'SUV — příplatek',  price: 500, group: 'vehicle' },
+          { id: 'int-extra-kombi', name: 'KOMBI', price: 300, group: 'vehicle' },
+          { id: 'int-extra-suv',   name: 'SUV',  price: 500, group: 'vehicle' },
         ],
       },
     ],
@@ -58,8 +58,8 @@ export const SERVICES = {
           'Mytí kol a podběhů',
         ],
         addons: [
-          { id: 'ext-wash-kombi', name: 'KOMBI — příplatek', price: 300, group: 'vehicle' },
-          { id: 'ext-wash-suv',   name: 'SUV — příplatek',  price: 500, group: 'vehicle' },
+          { id: 'ext-wash-kombi', name: 'KOMBI', price: 300, group: 'vehicle' },
+          { id: 'ext-wash-suv',   name: 'SUV',  price: 500, group: 'vehicle' },
         ],
       },
     ],
