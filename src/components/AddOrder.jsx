@@ -23,7 +23,7 @@ function Stepper({ value, onChange, onRemove }) {
 
 // ─── Service Picker ───────────────────────────────────────────────────────────
 
-function ServicePicker({ onApply, customPrices = {} }) {
+function ServicePicker({ onChange, customPrices = {} }) {
   const p = (id, def) => customPrices[id] ?? def;
 
   // Interior
@@ -116,6 +116,11 @@ function ServicePicker({ onApply, customPrices = {} }) {
     return { total: intTotal + extTotal + uphTotal, serviceText: parts.join(', ') };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPackage, selectedAddons, selectedVehicleAddons, extras, selectedExtPackage, selectedExtAddons, extExtras, uphEnabled, upholstery, customPrices]);
+
+  useEffect(() => {
+    onChange?.(total, serviceText);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total, serviceText]);
 
   const subCls = (id, active) => `px-3 py-1 rounded text-xs font-medium transition-all ${active === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`;
 
@@ -325,17 +330,6 @@ function ServicePicker({ onApply, customPrices = {} }) {
 
       </div>
 
-      {/* Total + Apply */}
-      <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs text-slate-500">Celkem ze služeb</div>
-          <div className="text-lg font-bold text-white">{formatCzk(total)}</div>
-        </div>
-        <button type="button" onClick={() => onApply(total, serviceText)} disabled={total === 0}
-          className="px-4 py-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors">
-          Použít jako cenu
-        </button>
-      </div>
     </div>
   );
 }
@@ -574,6 +568,7 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
   const [splitOverrideEnabled, setSplitOverrideEnabled] = useState(initialOrder?.splitOverride != null);
   const [customSplit, setCustomSplit] = useState(initialOrder?.splitOverride ?? split);
   const [servicePickerOpen, setServicePickerOpen] = useState(false);
+  const [serviceComputedTotal, setServiceComputedTotal] = useState(0);
 
   const price = parseFloat(form.price) || 0;
   const discountFraction = discountEnabled ? Math.min(Math.max(parseFloat(discountPct) || 0, 0), 100) / 100 : 0;
@@ -657,8 +652,8 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
         {/* Single grid — CSS order controls mobile vs desktop layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* Klient & Vozidlo — order 1 always */}
-          <div className="order-1 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          {/* Klient & Vozidlo — full width */}
+          <div className="col-span-1 lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
               Klient & Vozidlo <span className="text-slate-600 font-normal normal-case">(volitelné)</span>
             </div>
@@ -692,141 +687,8 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
             )}
           </div>
 
-          {/* Cena — order 3 on mobile (after service picker), order 2 on desktop */}
-          <div className="order-3 lg:order-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cena zakázky (Kč)</div>
-            <input
-              type="number" value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-              placeholder="Sestav službu nebo uprav cenu" min="0" step="1"
-              className={inputCls}
-            />
-            {serviceText && (
-              <p className="text-xs text-slate-500 truncate">{serviceText}</p>
-            )}
-
-            {/* Sleva */}
-            {price > 0 && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => { setDiscountEnabled((d) => !d); setDiscountPct(''); }}
-                  className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${discountEnabled ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${discountEnabled ? 'border-amber-400 bg-amber-400/20' : 'border-slate-600'}`}>
-                    {discountEnabled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                  </span>
-                  Dát slevu
-                </button>
-
-                {discountEnabled && (
-                  <div className="mt-2 bg-slate-800/60 border border-amber-500/20 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="number"
-                          value={discountPct}
-                          onChange={(e) => setDiscountPct(e.target.value)}
-                          placeholder="0"
-                          min="0" max="100" step="1"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors pr-8"
-                          autoFocus
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium pointer-events-none">%</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        {[5, 10, 15, 20].map((pct) => (
-                          <button
-                            key={pct}
-                            type="button"
-                            onClick={() => setDiscountPct(String(pct))}
-                            className={`px-2 py-1.5 rounded-md text-xs font-medium border transition-colors ${discountPct === String(pct) ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'}`}
-                          >
-                            {pct} %
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {discountAmount > 0 && (
-                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/50">
-                        <div className="space-y-0.5">
-                          <div className="flex justify-between gap-4">
-                            <span className="text-slate-500">Cena bez slevy</span>
-                            <span className="text-slate-400">{formatCzk(price)}</span>
-                          </div>
-                          <div className="flex justify-between gap-4">
-                            <span className="text-slate-500">Sleva {discountFraction * 100} %</span>
-                            <span className="text-amber-400">− {formatCzk(discountAmount)}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-slate-500">Konečná cena</div>
-                          <div className="text-base font-bold text-white">{formatCzk(finalPrice)}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Dýško */}
-            {price > 0 && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => { setTipEnabled((d) => !d); setTipAmount(''); }}
-                  className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${tipEnabled ? 'text-green-400 hover:text-green-300' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${tipEnabled ? 'border-green-400 bg-green-400/20' : 'border-slate-600'}`}>
-                    {tipEnabled && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
-                  </span>
-                  Spropitné
-                </button>
-
-                {tipEnabled && (
-                  <div className="mt-2 bg-slate-800/60 border border-green-500/20 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="number"
-                          value={tipAmount}
-                          onChange={(e) => setTipAmount(e.target.value)}
-                          placeholder="0"
-                          min="0" step="1"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-green-500 transition-colors pr-12"
-                          autoFocus
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium pointer-events-none">Kč</span>
-                      </div>
-                    </div>
-                    {tip > 0 && (
-                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/50">
-                        <div className="space-y-0.5">
-                          <div className="flex justify-between gap-4">
-                            <span className="text-slate-500">Cena za práci</span>
-                            <span className="text-slate-400">{formatCzk(price - discountAmount)}</span>
-                          </div>
-                          <div className="flex justify-between gap-4">
-                            <span className="text-slate-500">Dýško</span>
-                            <span className="text-green-400">+ {formatCzk(tip)}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-slate-500">Celkem</div>
-                          <div className="text-base font-bold text-white">{formatCzk(finalPrice)}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-
-          {/* Service Picker — order 2 on mobile, order 3 on desktop, full width */}
-          <div className="order-2 lg:order-3 col-span-1 lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          {/* Service Picker + Cena — full width */}
+          <div className="col-span-1 lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             {/* Mobile toggle header */}
             <button
               type="button"
@@ -843,17 +705,141 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
             <div className="hidden lg:flex items-center px-4 py-3 border-b border-slate-800">
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Sestavit ze služeb</div>
             </div>
-            {/* Content: hidden on mobile until opened, always visible on desktop */}
+            {/* Service panels — collapsible on mobile */}
             <div className={`p-4 ${servicePickerOpen ? 'block' : 'hidden'} lg:block`}>
-              <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
-                setForm((f) => ({ ...f, price: String(total) }));
-                setServiceText(desc);
-              }} />
+              <ServicePicker
+                customPrices={customPrices}
+                onChange={(total, desc) => {
+                  setServiceComputedTotal(total);
+                  setServiceText(desc);
+                  if (total > 0) setForm((f) => ({ ...f, price: String(total) }));
+                }}
+              />
+            </div>
+
+            {/* Price / Sleva / Spropitné — always visible */}
+            <div className="border-t border-slate-700/40 px-4 py-4 space-y-3">
+              {/* Service total reference */}
+              {serviceComputedTotal > 0 && (
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Celkem ze služeb</span>
+                  <span className="font-semibold text-white">{formatCzk(serviceComputedTotal)}</span>
+                </div>
+              )}
+
+              {/* Manual price */}
+              <div>
+                <Label>Cena zakázky (Kč)</Label>
+                <input
+                  type="number" value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  placeholder="Zadejte nebo sestav ze služeb" min="0" step="1"
+                  className={inputCls}
+                />
+                {serviceText && <p className="text-xs text-slate-500 truncate mt-1">{serviceText}</p>}
+              </div>
+
+              {/* Sleva + Spropitné */}
+              {price > 0 && (
+                <div className="flex flex-col gap-2">
+                  {/* Sleva */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountEnabled((d) => !d); setDiscountPct(''); }}
+                      className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${discountEnabled ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${discountEnabled ? 'border-amber-400 bg-amber-400/20' : 'border-slate-600'}`}>
+                        {discountEnabled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                      </span>
+                      Dát slevu
+                    </button>
+                    {discountEnabled && (
+                      <div className="mt-2 bg-slate-800/60 border border-amber-500/20 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <input
+                              type="number" value={discountPct}
+                              onChange={(e) => setDiscountPct(e.target.value)}
+                              placeholder="0" min="0" max="100" step="1"
+                              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors pr-8"
+                              autoFocus
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium pointer-events-none">%</span>
+                          </div>
+                          <div className="flex gap-1.5">
+                            {[5, 10, 15, 20].map((pct) => (
+                              <button key={pct} type="button" onClick={() => setDiscountPct(String(pct))}
+                                className={`px-2 py-1.5 rounded-md text-xs font-medium border transition-colors ${discountPct === String(pct) ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'}`}>
+                                {pct} %
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {discountAmount > 0 && (
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/50">
+                            <div className="space-y-0.5">
+                              <div className="flex justify-between gap-4"><span className="text-slate-500">Bez slevy</span><span className="text-slate-400">{formatCzk(price)}</span></div>
+                              <div className="flex justify-between gap-4"><span className="text-slate-500">Sleva {discountFraction * 100} %</span><span className="text-amber-400">− {formatCzk(discountAmount)}</span></div>
+                            </div>
+                            <div className="text-right"><div className="text-xs text-slate-500">Konečná cena</div><div className="text-base font-bold text-white">{formatCzk(finalPrice)}</div></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Spropitné */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => { setTipEnabled((d) => !d); setTipAmount(''); }}
+                      className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${tipEnabled ? 'text-green-400 hover:text-green-300' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${tipEnabled ? 'border-green-400 bg-green-400/20' : 'border-slate-600'}`}>
+                        {tipEnabled && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
+                      </span>
+                      Spropitné
+                    </button>
+                    {tipEnabled && (
+                      <div className="mt-2 bg-slate-800/60 border border-green-500/20 rounded-xl p-3 space-y-2">
+                        <div className="relative">
+                          <input
+                            type="number" value={tipAmount}
+                            onChange={(e) => setTipAmount(e.target.value)}
+                            placeholder="0" min="0" step="1"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-green-500 transition-colors pr-12"
+                            autoFocus
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium pointer-events-none">Kč</span>
+                        </div>
+                        {tip > 0 && (
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/50">
+                            <div className="space-y-0.5">
+                              <div className="flex justify-between gap-4"><span className="text-slate-500">Cena za práci</span><span className="text-slate-400">{formatCzk(price - discountAmount)}</span></div>
+                              <div className="flex justify-between gap-4"><span className="text-slate-500">Spropitné</span><span className="text-green-400">+ {formatCzk(tip)}</span></div>
+                            </div>
+                            <div className="text-right"><div className="text-xs text-slate-500">Celkem</div><div className="text-base font-bold text-white">{formatCzk(finalPrice)}</div></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Final price summary when both discount and tip */}
+              {discountEnabled && tipEnabled && discountAmount > 0 && tip > 0 && (
+                <div className="flex items-center justify-between pt-2 border-t border-slate-700/40">
+                  <span className="text-xs text-slate-500">Konečná cena</span>
+                  <span className="text-base font-bold text-white">{formatCzk(finalPrice)}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Datum + Kdo pracoval — order 4 */}
-          <div className="order-4 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+          {/* Datum + Kdo pracoval */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
             <div>
               <Label>Datum provedení zakázky</Label>
               <div className="overflow-hidden">
@@ -929,8 +915,8 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
             )}
           </div>
 
-          {/* Časová náročnost + Poznámka — order 5 */}
-          <div className="order-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+          {/* Časová náročnost + Poznámka */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
             <div>
               <Label optional>Časová náročnost (hodin)</Label>
               <input
