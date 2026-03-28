@@ -573,6 +573,7 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
   const [tipAmount, setTipAmount] = useState('');
   const [splitOverrideEnabled, setSplitOverrideEnabled] = useState(initialOrder?.splitOverride != null);
   const [customSplit, setCustomSplit] = useState(initialOrder?.splitOverride ?? split);
+  const [servicePickerOpen, setServicePickerOpen] = useState(false);
 
   const price = parseFloat(form.price) || 0;
   const discountFraction = discountEnabled ? Math.min(Math.max(parseFloat(discountPct) || 0, 0), 100) / 100 : 0;
@@ -653,11 +654,11 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* ── Direct grid — cards are grid children so each row auto-aligns heights ── */}
+        {/* Single grid — CSS order controls mobile vs desktop layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* ROW 1 left ── Klient & Vozidlo */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          {/* Klient & Vozidlo — order 1 always */}
+          <div className="order-1 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
               Klient & Vozidlo <span className="text-slate-600 font-normal normal-case">(volitelné)</span>
             </div>
@@ -691,8 +692,8 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
             )}
           </div>
 
-          {/* ROW 1 right ── Cena */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          {/* Cena — order 3 on mobile (after service picker), order 2 on desktop */}
+          <div className="order-3 lg:order-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cena zakázky (Kč)</div>
             <input
               type="number" value={form.price}
@@ -824,20 +825,35 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
 
           </div>
 
-        </div>
+          {/* Service Picker — order 2 on mobile, order 3 on desktop, full width */}
+          <div className="order-2 lg:order-3 col-span-1 lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            {/* Mobile toggle header */}
+            <button
+              type="button"
+              onClick={() => setServicePickerOpen(o => !o)}
+              className="lg:hidden w-full flex items-center justify-between px-4 py-3 border-b border-slate-800 transition-colors"
+            >
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Sestavit ze služeb</div>
+              <div className="flex items-center gap-2">
+                {serviceText && <span className="text-xs text-orange-400 font-medium truncate max-w-[180px]">{serviceText}</span>}
+                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform flex-shrink-0 ${servicePickerOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
+            {/* Desktop static header */}
+            <div className="hidden lg:flex items-center px-4 py-3 border-b border-slate-800">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Sestavit ze služeb</div>
+            </div>
+            {/* Content: hidden on mobile until opened, always visible on desktop */}
+            <div className={`p-4 ${servicePickerOpen ? 'block' : 'hidden'} lg:block`}>
+              <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
+                setForm((f) => ({ ...f, price: String(total) }));
+                setServiceText(desc);
+              }} />
+            </div>
+          </div>
 
-        {/* ── Service Picker — full width ── */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 my-5">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sestavit ze služeb</div>
-          <ServicePicker customPrices={customPrices} onApply={(total, desc) => {
-            setForm((f) => ({ ...f, price: String(total) }));
-            setServiceText(desc);
-          }} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* ROW 2 left ── Datum + Kdo pracoval */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+          {/* Datum + Kdo pracoval — order 4 */}
+          <div className="order-4 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
             <div>
               <Label>Datum provedení zakázky</Label>
               <div className="overflow-hidden">
@@ -913,8 +929,8 @@ export default function AddOrder({ settings, clients = [], customPrices = {}, on
             )}
           </div>
 
-          {/* ROW 2 right ── Časová náročnost + Poznámka */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+          {/* Časová náročnost + Poznámka — order 5 */}
+          <div className="order-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
             <div>
               <Label optional>Časová náročnost (hodin)</Label>
               <input

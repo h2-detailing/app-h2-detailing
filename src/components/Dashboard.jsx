@@ -752,7 +752,7 @@ function OrderCalendar({ orders }) {
               return (
                 <div
                   key={dateStr}
-                  className={`min-h-[90px] p-1 flex flex-col ${other ? 'opacity-40' : ''}`}
+                  className={`min-h-[110px] p-1 flex flex-col ${other ? 'opacity-40' : ''}`}
                 >
                   {/* Date number */}
                   <div className="flex justify-center mb-1">
@@ -776,10 +776,10 @@ function OrderCalendar({ orders }) {
                         key={o.id}
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setSelectedOrder(selectedOrder?.id === o.id ? null : o); }}
-                        className={`w-full text-left ${orderTypeColor(o.description).pill} text-[10px] leading-tight px-1.5 py-[2px] rounded truncate font-medium hover:brightness-125 transition-all`}
+                        className={`w-full text-left ${orderTypeColor(o.description).pill} text-[10px] leading-tight px-1.5 py-1 rounded font-medium hover:brightness-125 transition-all`}
                         title={o.description}
                       >
-                        {detectCategory(o.description)}
+                        <div className="line-clamp-2">{o.description || 'Zakázka'}</div>
                       </button>
                     ))}
                     {overflow > 0 && (
@@ -1549,12 +1549,6 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
             </section>
           )}
 
-          {/* Doba trvání služeb */}
-          <section>
-            <SectionLabel>Analytika časové náročnosti</SectionLabel>
-            <ServiceDurationWidget serviceDurationStats={d.serviceDurationStats} />
-          </section>
-
           {/* Nejpopulárnější služby */}
           {d.serviceBreakdown.length > 0 && (
             <section>
@@ -1584,6 +1578,13 @@ export default function Dashboard({ orders, expenses, settings, clients = [], on
         </div>
       </div>
       )}
+
+      {/* ── Analytika — vždy nakonec, pod čárou ─────────────────── */}
+      <div className="pt-6 border-t border-slate-800/60">
+        <SectionLabel>Analytika časové náročnosti</SectionLabel>
+        <ServiceDurationWidget serviceDurationStats={d.serviceDurationStats} />
+      </div>
+
     </div>
   );
 }
